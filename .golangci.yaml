@@ -1,0 +1,50 @@
+version: "2"
+run:
+  timeout: 15m
+linters:
+  default: standard
+  enable:
+    # enabled by default
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    # added additionally
+    - predeclared
+    - importas
+    - gocritic
+    - revive
+  settings:
+    staticcheck:
+      checks:
+        - all
+        - "-ST1008"
+        - "-ST1003"
+        - "-ST1000"
+        - "-ST1021"
+    gocritic:
+      disable-all: true
+      enabled-checks:
+        - importShadow
+    revive:
+      enable-all-rules: false
+      rules:
+        - name: import-alias-naming
+          severity: error
+          disabled: false
+          arguments:
+            - "^[a-z][a-z0-9]{0,}$"
+        - name: redundant-import-alias
+          disabled: false
+    importas:
+      alias:
+        - pkg: github.com/kyma-project/gpu/api/cloud-control.gpu/v1beta1
+          alias: cloudcontrolgpuv1beta1
+        - pkg: github.com/kyma-project/gpu/api/gpu/v1beta1
+          alias: gpuv1beta1
+
+        - pkg: k8s.io/apimachinery/pkg/apis/meta/v1
+          alias: metav1
+        - pkg: k8s.io/api/core/v1
+          alias: corev1

@@ -1,7 +1,7 @@
 version = 1
-SPDX-PackageName = "YOUR-REPO-NAME"
-SPDX-PackageSupplier = "YOUR-CONTACT (MAIL ADDRESS ETC.)"
-SPDX-PackageDownloadLocation = "https://github.com/sap/YOUR-REPO-NAME"
+SPDX-PackageName = "gpu"
+SPDX-PackageSupplier = "SAP SE (https://www.sap.com)"
+SPDX-PackageDownloadLocation = "https://github.com/kyma-project/gpu"
 SPDX-PackageComment = """
 The code in this project may include calls to APIs ("API Calls") of
 SAP or third-party products or services developed outside of this project
@@ -29,12 +29,5 @@ parties the right to use of access any SAP External Product, through API Calls.
 [[annotations]]
 path = "**"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "<YEARS-RELEVANT-FOR-YOUR-PROJECT> SAP SE or an SAP affiliate company and <YOUR-PROJECT-NAME> contributors"
+SPDX-FileCopyrightText = "2026 SAP SE or an SAP affiliate company and gpu contributors"
 SPDX-License-Identifier = "Apache-2.0"
-
-
-[[annotations]]
-path = "THIRD-PARTY-FILE-OR-FOLDER-LIST"
-precedence = "aggregate"
-SPDX-FileCopyrightText = "COPYRIGHT-OF-THIRD-PARTY-CODE"
-SPDX-License-Identifier = "LICENSE-OF-THIRD-PARTY-CODE"
