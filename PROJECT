@@ -9,4 +9,14 @@ layout:
 multigroup: true
 projectName: gpu
 repo: github.com/kyma-project/gpu
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: kyma-project.io
+  group: cloud-control.gpu
+  kind: GpuCluster
+  path: github.com/kyma-project/gpu/api/cloud-control.gpu/v1beta1
+  version: v1beta1
 version: "3"

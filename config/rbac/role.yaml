@@ -1,11 +1,32 @@
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  labels:
-    app.kubernetes.io/name: gpu
-    app.kubernetes.io/managed-by: kustomize
   name: manager-role
 rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
+- apiGroups:
+  - cloud-control.gpu.kyma-project.io
+  resources:
+  - gpuclusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cloud-control.gpu.kyma-project.io
+  resources:
+  - gpuclusters/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - cloud-control.gpu.kyma-project.io
+  resources:
+  - gpuclusters/status
+  verbs:
+  - get
+  - patch
+  - update

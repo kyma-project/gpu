@@ -1,0 +1,259 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+  name: gpuclusters.cloud-control.gpu.kyma-project.io
+spec:
+  group: cloud-control.gpu.kyma-project.io
+  names:
+    categories:
+    - kyma-cloud-control
+    kind: GpuCluster
+    listKind: GpuClusterList
+    plural: gpuclusters
+    singular: gpucluster
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.kymaName
+      name: Kyma
+      type: string
+    - jsonPath: .spec.shootName
+      name: Shoot
+      type: string
+    - jsonPath: .spec.provider
+      name: Provider
+      type: string
+    - jsonPath: .status.state
+      name: State
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1beta1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          GpuCluster is the Schema for the gpuclusters API.
+          It is an internal KCP resource — one per SKR that has GPU worker pools.
+          Users never interact with this resource directly.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              GpuClusterSpec defines the desired state of GpuCluster.
+              One GpuCluster exists per SKR that has GPU worker pools and the gpu-module enabled.
+            properties:
+              gardenLinux:
+                description: |-
+                  gardenLinux indicates whether the Shoot uses Garden Linux as the node OS.
+                  When true, the NVIDIA driver image is swapped to gardenlinux-nvidia-installer.
+                type: boolean
+              gpuPools:
+                description: gpuPools is the list of GPU worker pools detected from
+                  the Shoot spec.
+                items:
+                  description: GpuPool represents a single GPU worker pool detected
+                    from the Shoot spec.
+                  properties:
+                    machineType:
+                      description: machineType is the cloud provider machine type
+                        (e.g., p4d.24xlarge, a2-highgpu-1g).
+                      type: string
+                    maximum:
+                      description: maximum is the maximum number of nodes in the pool.
+                      format: int32
+                      type: integer
+                    minimum:
+                      description: minimum is the minimum number of nodes in the pool.
+                      format: int32
+                      type: integer
+                    name:
+                      description: name is the worker pool name from the Shoot spec.
+                      type: string
+                  required:
+                  - machineType
+                  - name
+                  type: object
+                minItems: 1
+                type: array
+              kymaName:
+                description: kymaName is the name of the Kyma CR that represents this
+                  SKR.
+                type: string
+              provider:
+                description: provider is the cloud provider detected from the Shoot
+                  (aws, gcp, azure).
+                enum:
+                - aws
+                - gcp
+                - azure
+                type: string
+              shootName:
+                description: shootName is the Gardener Shoot name.
+                type: string
+              shootNamespace:
+                description: shootNamespace is the Gardener Shoot namespace (e.g.,
+                  garden-project).
+                type: string
+            required:
+            - gpuPools
+            - kymaName
+            - provider
+            - shootName
+            - shootNamespace
+            type: object
+          status:
+            description: GpuClusterStatus defines the observed state of GpuCluster.
+            properties:
+              conditions:
+                description: conditions represent the current state of the GpuCluster
+                  resource.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              deletePhase:
+                description: deletePhase tracks the deletion state machine across
+                  looper cycles.
+                enum:
+                - None
+                - HelmUninstalling
+                - NamespaceDeleting
+                - GpuCRDeleting
+                - CleanupComplete
+                type: string
+              driverVersion:
+                description: driverVersion is the NVIDIA driver version reported by
+                  the driver DaemonSet.
+                type: string
+              installPhase:
+                description: installPhase tracks the Helm install/upgrade lifecycle
+                  across looper cycles.
+                enum:
+                - None
+                - HelmInstalling
+                - HelmInstalled
+                - HealthChecking
+                - Ready
+                - HelmUpgrading
+                - HelmUninstalling
+                - HelmUninstalled
+                type: string
+              lastReconciled:
+                description: lastReconciled is the timestamp of the last successful
+                  reconciliation.
+                format: date-time
+                type: string
+              moduleEnabled:
+                description: moduleEnabled indicates whether gpu-module is listed
+                  in the Kyma CR's .spec.modules[].
+                type: boolean
+              nodesReady:
+                description: nodesReady is the number of GPU nodes with healthy NVIDIA
+                  drivers.
+                format: int32
+                type: integer
+              nodesTotal:
+                description: nodesTotal is the total number of GPU nodes across all
+                  pools.
+                format: int32
+                type: integer
+              operatorInstalled:
+                description: operatorInstalled indicates whether the NVIDIA GPU Operator
+                  Helm release exists in the SKR.
+                type: boolean
+              operatorVersion:
+                description: operatorVersion is the installed NVIDIA GPU Operator
+                  chart version.
+                type: string
+              state:
+                description: state is the high-level lifecycle state.
+                enum:
+                - Pending
+                - Provisioning
+                - Ready
+                - Warning
+                - Error
+                - Deleting
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
