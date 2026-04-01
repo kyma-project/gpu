@@ -1,0 +1,177 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+  name: gpus.gpu.kyma-project.io
+spec:
+  group: gpu.kyma-project.io
+  names:
+    kind: Gpu
+    listKind: GpuList
+    plural: gpus
+    singular: gpu
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.state
+      name: State
+      type: string
+    - jsonPath: .status.driver.version
+      name: Driver
+      type: string
+    - jsonPath: .status.driver.nodesReady
+      name: Nodes Ready
+      type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1beta1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          Gpu is the user-facing resource for managing GPU support in a Kyma cluster.
+          One Gpu resource exists per cluster. It configures the NVIDIA GPU Operator
+          and reports GPU health status.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              GpuSpec defines the desired state of the Gpu resource.
+              Users can optionally override driver version and operator version.
+              All other configuration uses sensible defaults from the NVIDIA GPU Operator chart.
+            properties:
+              driver:
+                description: driver allows optional override of the NVIDIA driver
+                  configuration.
+                properties:
+                  version:
+                    description: |-
+                      version is the NVIDIA driver version to install (e.g., "535.129.03").
+                      If empty, the default version from the GPU Operator chart is used.
+                    type: string
+                type: object
+              operatorVersion:
+                description: |-
+                  operatorVersion is the NVIDIA GPU Operator chart version to install.
+                  If empty, the version embedded in the gpu module binary is used.
+                type: string
+            type: object
+          status:
+            description: GpuStatus defines the observed state of the Gpu resource.
+            properties:
+              conditions:
+                description: conditions represent the current state of the Gpu resource.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              driver:
+                description: driver reports the observed state of the NVIDIA driver
+                  across GPU nodes.
+                properties:
+                  nodesReady:
+                    description: nodesReady is the number of GPU nodes with healthy
+                      NVIDIA drivers.
+                    format: int32
+                    type: integer
+                  nodesTotal:
+                    description: nodesTotal is the total number of GPU nodes across
+                      all pools.
+                    format: int32
+                    type: integer
+                  version:
+                    description: version is the NVIDIA driver version reported by
+                      the driver DaemonSet.
+                    type: string
+                type: object
+              operatorVersion:
+                description: operatorVersion is the installed NVIDIA GPU Operator
+                  chart version.
+                type: string
+              state:
+                description: state is the high-level lifecycle state.
+                enum:
+                - Processing
+                - Ready
+                - Warning
+                - Error
+                - Deleting
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
