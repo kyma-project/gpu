@@ -22,7 +22,7 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the gpu itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
-- gpu_gpu_admin_role.yaml
-- gpu_gpu_editor_role.yaml
-- gpu_gpu_viewer_role.yaml
+- gpu_admin_role.yaml
+- gpu_editor_role.yaml
+- gpu_viewer_role.yaml
 

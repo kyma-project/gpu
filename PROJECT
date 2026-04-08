@@ -16,6 +16,6 @@ resources:
   domain: kyma-project.io
   group: gpu
   kind: Gpu
-  path: github.com/kyma-project/gpu/api/gpu/v1beta1
+  path: github.com/kyma-project/gpu/api/v1beta1
   version: v1beta1
 version: "3"

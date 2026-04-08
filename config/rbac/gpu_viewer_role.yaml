@@ -11,7 +11,7 @@ metadata:
   labels:
     app.kubernetes.io/name: gpu
     app.kubernetes.io/managed-by: kustomize
-  name: gpu-gpu-viewer-role
+  name: gpu-viewer-role
 rules:
 - apiGroups:
   - gpu.kyma-project.io

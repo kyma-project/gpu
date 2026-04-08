@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package gpu
+package controller
 
 import (
 	"context"
@@ -27,7 +27,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	gpuv1beta1 "github.com/kyma-project/gpu/api/gpu/v1beta1"
+	gpuv1beta1 "github.com/kyma-project/gpu/api/v1beta1"
 )
 
 var _ = Describe("Gpu Controller", func() {

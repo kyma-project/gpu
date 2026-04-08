@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package gpu
+package controller
 
 import (
 	"context"
@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	gpuv1beta1 "github.com/kyma-project/gpu/api/gpu/v1beta1"
+	gpuv1beta1 "github.com/kyma-project/gpu/api/v1beta1"
 )
 
 // GpuReconciler reconciles a Gpu object
@@ -58,6 +58,6 @@ func (r *GpuReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 func (r *GpuReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&gpuv1beta1.Gpu{}).
-		Named("gpu-gpu").
+		Named("gpu").
 		Complete(r)
 }

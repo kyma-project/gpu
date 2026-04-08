@@ -35,8 +35,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	gpuv1beta1 "github.com/kyma-project/gpu/api/gpu/v1beta1"
-	gpucontroller "github.com/kyma-project/gpu/internal/controller/gpu"
+	gpuv1beta1 "github.com/kyma-project/gpu/api/v1beta1"
+	gpucontroller "github.com/kyma-project/gpu/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
 
