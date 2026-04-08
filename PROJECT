@@ -6,7 +6,6 @@ cliVersion: 4.13.1
 domain: kyma-project.io
 layout:
 - go.kubebuilder.io/v4
-multigroup: true
 projectName: gpu
 repo: github.com/kyma-project/gpu
 version: "3"
