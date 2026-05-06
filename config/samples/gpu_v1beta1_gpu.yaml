@@ -1,0 +1,9 @@
+apiVersion: gpu.kyma-project.io/v1beta1
+kind: Gpu
+metadata:
+  labels:
+    app.kubernetes.io/name: gpu
+    app.kubernetes.io/managed-by: kustomize
+  name: gpu
+  namespace: kyma-system
+spec: {}
