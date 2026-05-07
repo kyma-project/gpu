@@ -105,7 +105,7 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 ##@ Build
 
 .PHONY: build
-build: manifests generate fmt vet ## Build manager binary.
+build: manifests generate fmt vet chart-verify ## Build manager binary.
 	go build -o bin/manager cmd/main.go
 
 .PHONY: run
@@ -253,3 +253,37 @@ endef
 define gomodver
 $(shell go list -m -f '{{if .Replace}}{{.Replace.Version}}{{else}}{{.Version}}{{end}}' $(1) 2>/dev/null)
 endef
+
+##@ Helm Charts
+
+NVIDIA_GPU_OPERATOR_VERSION ?= latest
+NVIDIA_HELM_REPO_URL ?= https://helm.ngc.nvidia.com/nvidia
+GARDENLINUX_NVIDIA_INSTALLER_VERSION ?= latest
+CHART_DIR := internal/chart/gpu-operator
+VALUES_DIR := internal/chart/values
+
+.PHONY: chart-download
+chart-download: ## Download the NVIDIA GPU Operator Helm chart (adds to existing charts).
+	@mkdir -p "$(CHART_DIR)"
+	@$(SHELL) hack/download-chart.sh "$(NVIDIA_GPU_OPERATOR_VERSION)" "$(NVIDIA_HELM_REPO_URL)" "$(CHART_DIR)"
+
+.PHONY: chart-refresh
+chart-refresh: ## Remove all charts and download a fresh copy.
+	@mkdir -p "$(CHART_DIR)"
+	@rm -f $(CHART_DIR)/gpu-operator-*.tgz
+	@$(SHELL) hack/download-chart.sh "$(NVIDIA_GPU_OPERATOR_VERSION)" "$(NVIDIA_HELM_REPO_URL)" "$(CHART_DIR)"
+
+.PHONY: values-download
+values-download: ## Download Garden Linux GPU operator values.
+	@$(SHELL) hack/download-values.sh "$(GARDENLINUX_NVIDIA_INSTALLER_VERSION)" "$(VALUES_DIR)"
+
+.PHONY: chart-verify
+chart-verify: ## Verify embedded chart and values files exist.
+	@test -n "$$(ls $(CHART_DIR)/*.tgz 2>/dev/null)" || { \
+		echo "ERROR: No chart found in $(CHART_DIR)/. Run 'make chart-download' first."; \
+		exit 1; \
+	}
+	@test -f $(VALUES_DIR)/gardenlinux.yaml || { \
+		echo "ERROR: No Garden Linux values found in $(VALUES_DIR)/. Run 'make values-download' first."; \
+		exit 1; \
+	}
