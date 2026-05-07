@@ -16,6 +16,7 @@ package helm
 
 import (
 	"fmt"
+	"strconv"
 
 	gpuv1beta1 "github.com/kyma-project/gpu/api/v1beta1"
 	"github.com/kyma-project/gpu/internal/chart"
@@ -77,7 +78,7 @@ func normalizeDriverVersion(values map[string]interface{}) {
 		return
 	}
 	if f, ok := driver["version"].(float64); ok {
-		driver["version"] = fmt.Sprintf("%g", f)
+		driver["version"] = strconv.FormatInt(int64(f), 10)
 	}
 }
 
