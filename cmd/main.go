@@ -187,6 +187,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := (&controller.GpuStatusReconciler{
+		Client: mgr.GetClient(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Failed to set up GPU status reconciler")
+		os.Exit(1)
+	}
+
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "Failed to set up health check")
 		os.Exit(1)
