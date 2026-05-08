@@ -59,8 +59,8 @@ var clusterPolicyGVK = schema.GroupVersionKind{
 //   - DriverReady:     nvidia-driver-daemonset is fully rolled out on all GPU nodes
 //   - ValidatorPassed: ClusterPolicy reports state=ready (NVIDIA's own end-to-end check)
 //
-// Top-level state is computed from all three conditions (HelmInstalled, DriverReady,
-// ValidatorPassed) at the end of every sync:
+// Top-level state is computed from all four conditions (Preflight, HelmInstalled,
+// DriverReady, ValidatorPassed) at the end of every sync:
 //
 //	all True  -> Ready
 //	any False -> Error
@@ -103,8 +103,16 @@ func (r *GpuStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	setCondition(&gpu.Status.Conditions, condDriverReady, driverReady, driverMsg, gpu.Generation)
 	setCondition(&gpu.Status.Conditions, condValidatorPassed, validatorPassed, validatorMsg, gpu.Generation)
-	gpu.Status.State = computeState(gpu.Status.Conditions)
+	newState := computeState(gpu.Status.Conditions)
 
+	// skip the API call if nothing actually changed
+	if gpu.Status.State == newState &&
+		conditionMatches(gpu.Status.Conditions, condDriverReady, driverReady) &&
+		conditionMatches(gpu.Status.Conditions, condValidatorPassed, validatorPassed) {
+		return ctrl.Result{}, nil
+	}
+
+	gpu.Status.State = newState
 	if err := r.Status().Patch(ctx, gpu, patch); err != nil {
 		return ctrl.Result{}, fmt.Errorf("patching Gpu status: %w", err)
 	}
@@ -125,12 +133,13 @@ func (r *GpuStatusReconciler) checkDriverDaemonSet(ctx context.Context) (bool, s
 
 	desired := ds.Status.DesiredNumberScheduled
 	ready := ds.Status.NumberReady
+	updated := ds.Status.UpdatedNumberScheduled // also check updated to catch in-progress rolling updates
 
 	if desired == 0 {
 		return false, "driver DaemonSet has no scheduled pods; no GPU nodes may be present"
 	}
-	if ready < desired {
-		return false, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready", ready, desired)
+	if ready < desired || updated < desired {
+		return false, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready, %d/%d updated", ready, desired, updated, desired)
 	}
 	return true, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready", ready, desired)
 }
@@ -162,25 +171,38 @@ func (r *GpuStatusReconciler) checkClusterPolicy(ctx context.Context) (bool, str
 	}
 }
 
-// computeState derives the top-level Gpu state from the three managed conditions.
-// All three True → Ready. Any False → Error. Otherwise → Processing.
+// computeState derives the top-level Gpu state from all four managed conditions.
+// Any False -> Error (checked first). All True -> Ready. Otherwise -> Processing.
 func computeState(conditions []metav1.Condition) gpuv1beta1.GpuState {
-	managed := []string{condHelmInstalled, condDriverReady, condValidatorPassed}
+	managed := []string{condPreflight, condHelmInstalled, condDriverReady, condValidatorPassed}
 
 	allTrue := true
 	for _, t := range managed {
 		c := apimeta.FindStatusCondition(conditions, t)
-		if c == nil || c.Status != metav1.ConditionTrue {
-			allTrue = false
-		}
 		if c != nil && c.Status == metav1.ConditionFalse {
 			return gpuv1beta1.GpuStateError
+		}
+		if c == nil || c.Status != metav1.ConditionTrue {
+			allTrue = false
 		}
 	}
 	if allTrue {
 		return gpuv1beta1.GpuStateReady
 	}
 	return gpuv1beta1.GpuStateProcessing
+}
+
+// conditionMatches returns true if the named condition already has the expected boolean status.
+// Used to avoid a no-op status patch when nothing changed.
+func conditionMatches(conditions []metav1.Condition, condType string, want bool) bool {
+	c := apimeta.FindStatusCondition(conditions, condType)
+	if c == nil {
+		return false
+	}
+	if want {
+		return c.Status == metav1.ConditionTrue
+	}
+	return c.Status == metav1.ConditionFalse
 }
 
 // setCondition is a thin wrapper around apimeta.SetStatusCondition that infers
@@ -209,6 +231,7 @@ func (r *GpuStatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		func(ctx context.Context, _ client.Object) []reconcile.Request {
 			var list gpuv1beta1.GpuList
 			if err := r.List(ctx, &list); err != nil {
+				log.FromContext(ctx).Error(err, "failed to list Gpu CRs; watch event will be lost")
 				return nil
 			}
 			reqs := make([]reconcile.Request, len(list.Items))
