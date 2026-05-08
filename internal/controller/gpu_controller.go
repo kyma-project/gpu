@@ -55,6 +55,9 @@ type GpuReconciler struct {
 // +kubebuilder:rbac:groups=gpu.kyma-project.io,resources=gpus/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=gpu.kyma-project.io,resources=gpus/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="*",resources="*",verbs=get;list;watch;create;update;patch;delete
 
 func (r *GpuReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	gpu := &gpuv1beta1.Gpu{}
@@ -111,7 +114,9 @@ func (r *GpuReconciler) reconcileNormal(ctx context.Context, gpu *gpuv1beta1.Gpu
 	}
 
 	// OutcomeProceed: all GPU nodes exist and run Garden Linux.
-	if err := r.setPreflightCondition(ctx, gpu, metav1.ConditionTrue, "Passed", "all GPU nodes are running Garden Linux", gpuv1beta1.GpuStateProcessing); err != nil {
+	// State is not set here - the Helm outcome owns the state transition.
+	// If build steps below fail, status shows Preflight=True without a misleading Processing state.
+	if err := r.setPreflightConditionOnly(ctx, gpu, metav1.ConditionTrue, "Passed", "all GPU nodes are running Garden Linux"); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -163,8 +168,10 @@ func (r *GpuReconciler) reconcileDelete(ctx context.Context, gpu *gpuv1beta1.Gpu
 
 	logger.Info("Gpu CR deleted, uninstalling GPU Operator")
 
+	// Best-effort status update - do not block deletion if this fails.
+	// The critical path is Uninstall and finalizer removal; status is cosmetic here.
 	if err := r.setHelmCondition(ctx, gpu, metav1.ConditionFalse, "Uninstalling", "uninstalling GPU Operator", gpuv1beta1.GpuStateDeleting, ""); err != nil {
-		return ctrl.Result{}, err
+		logger.Error(err, "failed to update status before uninstall, continuing")
 	}
 
 	// Uninstall is idempotent - returns nil if the release is already gone.
@@ -183,6 +190,24 @@ func (r *GpuReconciler) reconcileDelete(ctx context.Context, gpu *gpuv1beta1.Gpu
 func (r *GpuReconciler) setPreflightCondition(ctx context.Context, gpu *gpuv1beta1.Gpu, status metav1.ConditionStatus, reason, message string, state gpuv1beta1.GpuState) error {
 	patch := client.MergeFrom(gpu.DeepCopy())
 	gpu.Status.State = state
+	apimeta.SetStatusCondition(&gpu.Status.Conditions, metav1.Condition{
+		Type:               condPreflight,
+		Status:             status,
+		Reason:             reason,
+		Message:            message,
+		ObservedGeneration: gpu.Generation,
+	})
+	if err := r.Status().Patch(ctx, gpu, patch); err != nil {
+		return fmt.Errorf("patching Preflight condition: %w", err)
+	}
+	return nil
+}
+
+// setPreflightConditionOnly patches only the Preflight condition without changing state.
+// Used on OutcomeProceed so that intermediate build failures don't leave a misleading
+// Processing state — the Helm outcome owns the state transition.
+func (r *GpuReconciler) setPreflightConditionOnly(ctx context.Context, gpu *gpuv1beta1.Gpu, status metav1.ConditionStatus, reason, message string) error {
+	patch := client.MergeFrom(gpu.DeepCopy())
 	apimeta.SetStatusCondition(&gpu.Status.Conditions, metav1.Condition{
 		Type:               condPreflight,
 		Status:             status,
