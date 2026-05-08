@@ -188,6 +188,7 @@ func upgrade(ctx context.Context, cfg *action.Configuration, chrt *chart.Chart, 
 	act := action.NewUpgrade(cfg)
 	act.Namespace = releaseNamespace
 	act.Wait = false
+	act.Force = true // force allows upgrading a release that is in a failed state, which would otherwise be rejected by Helm without explicit intervention.
 	if _, err := act.RunWithContext(ctx, releaseName, chrt, values); err != nil {
 		return fmt.Errorf("upgrading gpu-operator: %w", err)
 	}
