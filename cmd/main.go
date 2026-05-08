@@ -34,6 +34,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	gpuv1beta1 "github.com/kyma-project/gpu/api/v1beta1"
+	"github.com/kyma-project/gpu/internal/controller"
+	"github.com/kyma-project/gpu/internal/helm"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -44,6 +48,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(gpuv1beta1.AddToScheme(scheme))
 
 	// +kubebuilder:scaffold:scheme
 }
@@ -174,6 +179,13 @@ func main() {
 	}
 
 	// +kubebuilder:scaffold:builder
+	if err := (&controller.GpuReconciler{
+		Client:    mgr.GetClient(),
+		Installer: helm.NewInstaller(mgr.GetConfig()),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Failed to set up GPU reconciler")
+		os.Exit(1)
+	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "Failed to set up health check")

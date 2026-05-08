@@ -64,17 +64,17 @@ func TestRunPreflight(t *testing.T) {
 		wantOutcome Outcome
 	}{
 		{
-			name:        "no nodes at all — warn",
+			name:        "no nodes at all - warn",
 			nodes:       nil,
 			wantOutcome: OutcomeWarn,
 		},
 		{
-			name:        "only system nodes, no GPU nodes — warn",
+			name:        "only system nodes, no GPU nodes - warn",
 			nodes:       []runtime.Object{systemNode("system-1"), systemNode("system-2")},
 			wantOutcome: OutcomeWarn,
 		},
 		{
-			name: "GPU nodes all Garden Linux AWS — proceed",
+			name: "GPU nodes all Garden Linux AWS - proceed",
 			nodes: []runtime.Object{
 				gpuNode("gpu-1", "g4dn.xlarge", "Garden Linux 1592.1"),
 				gpuNode("gpu-2", "g6.xlarge", "Garden Linux 1592.1"),
@@ -83,21 +83,21 @@ func TestRunPreflight(t *testing.T) {
 			wantOutcome: OutcomeProceed,
 		},
 		{
-			name: "GPU nodes all Garden Linux GCP — proceed",
+			name: "GPU nodes all Garden Linux GCP - proceed",
 			nodes: []runtime.Object{
 				gpuNode("gpu-1", "g2-standard-8", "Garden Linux 1592.1"),
 			},
 			wantOutcome: OutcomeProceed,
 		},
 		{
-			name: "GPU node running Ubuntu — error",
+			name: "GPU node running Ubuntu - error",
 			nodes: []runtime.Object{
 				gpuNode("gpu-1", "g4dn.xlarge", "Ubuntu 22.04"),
 			},
 			wantOutcome: OutcomeError,
 		},
 		{
-			name: "mixed GPU nodes — some Garden Linux, some Ubuntu — error",
+			name: "mixed GPU nodes - some Garden Linux, some Ubuntu - error",
 			nodes: []runtime.Object{
 				gpuNode("gpu-1", "g4dn.xlarge", "Garden Linux 1592.1"),
 				gpuNode("gpu-2", "g6.xlarge", "Ubuntu 22.04"),
@@ -105,7 +105,7 @@ func TestRunPreflight(t *testing.T) {
 			wantOutcome: OutcomeError,
 		},
 		{
-			name: "system nodes Ubuntu, GPU nodes Garden Linux — proceed",
+			name: "system nodes Ubuntu, GPU nodes Garden Linux - proceed",
 			nodes: []runtime.Object{
 				systemNode("system-1"),
 				gpuNode("gpu-1", "g4dn.xlarge", "Garden Linux 1592.1"),

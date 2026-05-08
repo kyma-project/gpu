@@ -22,22 +22,22 @@ func TestIsGPUNode(t *testing.T) {
 		instanceType string
 		want         bool
 	}{
-		// AWS — only G4dn and G6 are offered via Kyma
+		// AWS - only G4dn and G6 are offered via Kyma
 		{"aws g4dn", "g4dn.xlarge", true},
 		{"aws g6", "g6.xlarge", true},
-		{"aws g5 — not offered via Kyma", "g5.xlarge", false},
-		{"aws g4ad — AMD GPU, not NVIDIA", "g4ad.xlarge", false},
-		{"aws p4d — not offered via Kyma", "p4d.24xlarge", false},
-		// GCP — only G2 series offered via Kyma
+		{"aws g5 - not offered via Kyma", "g5.xlarge", false},
+		{"aws g4ad - AMD GPU, not NVIDIA", "g4ad.xlarge", false},
+		{"aws p4d - not offered via Kyma", "p4d.24xlarge", false},
+		// GCP - only G2 series offered via Kyma
 		{"gcp g2", "g2-standard-8", true},
 		{"gcp g2 large", "g2-standard-48", true},
-		{"gcp a2 — not offered via Kyma", "a2-highgpu-8g", false},
-		{"gcp a3 — not offered via Kyma", "a3-megagpu-8g", false},
-		// Azure — only NC series offered via Kyma
+		{"gcp a2 - not offered via Kyma", "a2-highgpu-8g", false},
+		{"gcp a3 - not offered via Kyma", "a3-megagpu-8g", false},
+		// Azure - only NC series offered via Kyma
 		{"azure NC", "Standard_NC4as_T4_v3", true},
 		{"azure NC64", "Standard_NC64as_T4_v3", true},
-		{"azure ND — not offered via Kyma", "Standard_ND96asr_v4", false},
-		{"azure NV — not offered via Kyma", "Standard_NV12s_v3", false},
+		{"azure ND - not offered via Kyma", "Standard_ND96asr_v4", false},
+		{"azure NV - not offered via Kyma", "Standard_NV12s_v3", false},
 		// non-GPU
 		{"aws m5", "m5.xlarge", false},
 		{"gcp n2", "n2-standard-4", false},
