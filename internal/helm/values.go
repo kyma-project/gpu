@@ -28,7 +28,7 @@ const nvidiaDriverRepo = "nvcr.io/nvidia"
 // ClusterInfo captures what the operator has detected about the cluster.
 // It is produced by the detection layer and consumed by BuildValues.
 type ClusterInfo struct {
-	// GardenLinux is true when every node in the cluster runs Garden Linux. (by pkg/detection.AllNodesGardenLinux())
+	// GardenLinux is true when all GPU nodes in the cluster run Garden Linux.
 	GardenLinux bool
 }
 

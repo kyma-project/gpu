@@ -42,18 +42,11 @@ func TestIsGPUNode(t *testing.T) {
 		{"aws m5", "m5.xlarge", false},
 		{"gcp n2", "n2-standard-4", false},
 		{"azure D4s", "Standard_D4s_v3", false},
-		// edge cases
-		{"empty label", "", false},
-		{"missing label", "", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			labels := map[string]string{}
-			if tt.instanceType != "" {
-				labels[instanceTypeLabel] = tt.instanceType
-			}
-			got := IsGPUNode(labels)
+			got := IsGPUNode(map[string]string{instanceTypeLabel: tt.instanceType})
 			if got != tt.want {
 				t.Errorf("IsGPUNode(%q) = %v, want %v", tt.instanceType, got, tt.want)
 			}
@@ -61,9 +54,14 @@ func TestIsGPUNode(t *testing.T) {
 	}
 }
 
-func TestIsGPUNodeNoLabel(t *testing.T) {
-	got := IsGPUNode(map[string]string{})
-	if got {
+func TestIsGPUNodeMissingLabel(t *testing.T) {
+	if IsGPUNode(map[string]string{}) {
 		t.Error("IsGPUNode with no labels should return false")
+	}
+}
+
+func TestIsGPUNodeEmptyLabel(t *testing.T) {
+	if IsGPUNode(map[string]string{instanceTypeLabel: ""}) {
+		t.Error("IsGPUNode with empty instance-type label should return false")
 	}
 }
