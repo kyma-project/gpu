@@ -99,26 +99,27 @@ func (r *GpuStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	driverReady, driverMsg := r.checkDriverDaemonSet(ctx)
 	validatorPassed, validatorMsg := r.checkClusterPolicy(ctx)
 
-	patch := client.MergeFrom(gpu.DeepCopy())
+	scratch := append([]metav1.Condition(nil), gpu.Status.Conditions...)
+	setCondition(&scratch, condDriverReady, driverReady, driverMsg, gpu.Generation)
+	setCondition(&scratch, condValidatorPassed, validatorPassed, validatorMsg, gpu.Generation)
+	newState := computeState(scratch)
 
-	setCondition(&gpu.Status.Conditions, condDriverReady, driverReady, driverMsg, gpu.Generation)
-	setCondition(&gpu.Status.Conditions, condValidatorPassed, validatorPassed, validatorMsg, gpu.Generation)
-	newState := computeState(gpu.Status.Conditions)
-
-	// skip the API call if nothing actually changed
 	if gpu.Status.State == newState &&
 		conditionMatches(gpu.Status.Conditions, condDriverReady, driverReady) &&
 		conditionMatches(gpu.Status.Conditions, condValidatorPassed, validatorPassed) {
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: requeueWarn}, nil
 	}
 
+	patch := client.MergeFrom(gpu.DeepCopy())
+	gpu.Status.Conditions = scratch
 	gpu.Status.State = newState
+
 	if err := r.Status().Patch(ctx, gpu, patch); err != nil {
 		return ctrl.Result{}, fmt.Errorf("patching Gpu status: %w", err)
 	}
 
 	logger.Info("status synced", "state", gpu.Status.State, "driverReady", driverReady, "validatorPassed", validatorPassed)
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: requeueWarn}, nil
 }
 
 // checkDriverDaemonSet returns true when the NVIDIA driver DaemonSet is fully rolled out.
@@ -133,13 +134,14 @@ func (r *GpuStatusReconciler) checkDriverDaemonSet(ctx context.Context) (bool, s
 
 	desired := ds.Status.DesiredNumberScheduled
 	ready := ds.Status.NumberReady
-	updated := ds.Status.UpdatedNumberScheduled // also check updated to catch in-progress rolling updates
+	available := ds.Status.NumberAvailable
+	updated := ds.Status.UpdatedNumberScheduled
 
 	if desired == 0 {
 		return false, "driver DaemonSet has no scheduled pods; no GPU nodes may be present"
 	}
-	if ready < desired || updated < desired {
-		return false, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready, %d/%d updated", ready, desired, updated, desired)
+	if ready < desired || available < desired || updated < desired {
+		return false, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready, %d/%d available, %d/%d updated", ready, desired, available, desired, updated, desired)
 	}
 	return true, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready", ready, desired)
 }
