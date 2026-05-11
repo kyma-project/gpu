@@ -20,18 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// GpuState represents the high-level lifecycle state of the Gpu resource.
-// +kubebuilder:validation:Enum=Processing;Ready;Warning;Error;Deleting
-type GpuState string
-
-const (
-	GpuStateProcessing GpuState = "Processing"
-	GpuStateReady      GpuState = "Ready"
-	GpuStateWarning    GpuState = "Warning"
-	GpuStateError      GpuState = "Error"
-	GpuStateDeleting   GpuState = "Deleting"
-)
-
 // DriverSpec allows optional override of the NVIDIA driver version.
 type DriverSpec struct {
 	// version is the NVIDIA driver version to install (e.g., "535.129.03").
@@ -63,18 +51,10 @@ type DriverStatus struct {
 	// nodesReady is the number of GPU nodes with healthy NVIDIA drivers.
 	// +optional
 	NodesReady int32 `json:"nodesReady,omitempty"`
-
-	// nodesTotal is the total number of GPU nodes across all pools.
-	// +optional
-	NodesTotal int32 `json:"nodesTotal,omitempty"`
 }
 
 // GpuStatus defines the observed state of the Gpu resource.
 type GpuStatus struct {
-	// state is the high-level lifecycle state.
-	// +optional
-	State GpuState `json:"state,omitempty"`
-
 	// operatorVersion is the installed NVIDIA GPU Operator chart version.
 	// +optional
 	OperatorVersion string `json:"operatorVersion,omitempty"`
@@ -92,8 +72,9 @@ type GpuStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
-// +kubebuilder:printcolumn:name="Driver",type="string",JSONPath=".status.driver.version"
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Reason",type="string",JSONPath=`.status.conditions[?(@.type=="Ready")].reason`
+// +kubebuilder:printcolumn:name="Driver Version",type="string",JSONPath=".status.driver.version"
 // +kubebuilder:printcolumn:name="Nodes Ready",type="integer",JSONPath=".status.driver.nodesReady"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 

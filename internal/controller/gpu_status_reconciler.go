@@ -37,9 +37,6 @@ import (
 )
 
 const (
-	condDriverReady     = "DriverReady"
-	condValidatorPassed = "ValidatorPassed"
-
 	clusterPolicyName    = "cluster-policy"
 	driverDaemonSetName  = "nvidia-driver-daemonset"
 	gpuOperatorNamespace = "gpu-operator"
@@ -56,15 +53,10 @@ var clusterPolicyGVK = schema.GroupVersionKind{
 // so that install and status-sync concerns stay cleanly separated.
 //
 // Conditions managed:
-//   - DriverReady:     nvidia-driver-daemonset is fully rolled out on all GPU nodes
-//   - ValidatorPassed: ClusterPolicy reports state=ready (NVIDIA's own end-to-end check)
+//   - DriverReady:     True when nvidia-driver-daemonset is fully rolled out on all GPU nodes
+//   - ValidatorPassed: True when ClusterPolicy reports state=ready (NVIDIA's end-to-end check)
 //
-// Top-level state is computed from all four conditions (Preflight, HelmInstalled,
-// DriverReady, ValidatorPassed) at the end of every sync:
-//
-//	all True  -> Ready
-//	any False -> Error
-//	otherwise -> Processing
+// Both conditions use Unknown while converging and False only for hard read errors.
 type GpuStatusReconciler struct {
 	client.Client
 }
@@ -96,40 +88,41 @@ func (r *GpuStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	driverReady, driverMsg := r.checkDriverDaemonSet(ctx)
-	validatorPassed, validatorMsg := r.checkClusterPolicy(ctx)
+	driverStatus, driverReason, driverMsg := r.checkDriverDaemonSet(ctx)
+	validatorStatus, validatorReason, validatorMsg := r.checkClusterPolicy(ctx)
 
 	scratch := append([]metav1.Condition(nil), gpu.Status.Conditions...)
-	setCondition(&scratch, condDriverReady, driverReady, driverMsg, gpu.Generation)
-	setCondition(&scratch, condValidatorPassed, validatorPassed, validatorMsg, gpu.Generation)
-	newState := computeState(scratch)
+	setCondition(&scratch, condDriverReady, driverStatus, driverReason, driverMsg, gpu.Generation)
+	setCondition(&scratch, condValidatorPassed, validatorStatus, validatorReason, validatorMsg, gpu.Generation)
+	apimeta.SetStatusCondition(&scratch, computeReadySummary(scratch, gpu.Generation))
 
-	if gpu.Status.State == newState &&
-		conditionMatches(gpu.Status.Conditions, condDriverReady, driverReady) &&
-		conditionMatches(gpu.Status.Conditions, condValidatorPassed, validatorPassed) {
+	if conditionMatches(gpu.Status.Conditions, condDriverReady, driverStatus, driverReason, driverMsg) &&
+		conditionMatches(gpu.Status.Conditions, condValidatorPassed, validatorStatus, validatorReason, validatorMsg) {
 		return ctrl.Result{RequeueAfter: requeueWarn}, nil
 	}
 
 	patch := client.MergeFrom(gpu.DeepCopy())
 	gpu.Status.Conditions = scratch
-	gpu.Status.State = newState
 
 	if err := r.Status().Patch(ctx, gpu, patch); err != nil {
 		return ctrl.Result{}, fmt.Errorf("patching Gpu status: %w", err)
 	}
 
-	logger.Info("status synced", "state", gpu.Status.State, "driverReady", driverReady, "validatorPassed", validatorPassed)
+	logger.Info("status synced", "driverReady", driverStatus, "validatorPassed", validatorStatus)
 	return ctrl.Result{RequeueAfter: requeueWarn}, nil
 }
 
-// checkDriverDaemonSet returns true when the NVIDIA driver DaemonSet is fully rolled out.
-func (r *GpuStatusReconciler) checkDriverDaemonSet(ctx context.Context) (bool, string) {
+// checkDriverDaemonSet returns the condition status, reason, and message for DriverReady.
+// Unknown = DaemonSet not yet present or pods still rolling out (outcome undetermined).
+// False   = DaemonSet exists but is definitively not healthy (e.g. read error).
+// True    = all nodes ready, available, and updated.
+func (r *GpuStatusReconciler) checkDriverDaemonSet(ctx context.Context) (metav1.ConditionStatus, string, string) {
 	ds := &appsv1.DaemonSet{}
 	if err := r.Get(ctx, types.NamespacedName{Name: driverDaemonSetName, Namespace: gpuOperatorNamespace}, ds); err != nil {
 		if apierrors.IsNotFound(err) {
-			return false, "nvidia-driver-daemonset not found; driver installation may still be in progress"
+			return metav1.ConditionUnknown, reasonWaiting, "nvidia-driver-daemonset not found; driver installation may still be in progress"
 		}
-		return false, fmt.Sprintf("error reading driver DaemonSet: %v", err)
+		return metav1.ConditionFalse, reasonReadError, fmt.Sprintf("error reading driver DaemonSet: %v", err)
 	}
 
 	desired := ds.Status.DesiredNumberScheduled
@@ -138,96 +131,46 @@ func (r *GpuStatusReconciler) checkDriverDaemonSet(ctx context.Context) (bool, s
 	updated := ds.Status.UpdatedNumberScheduled
 
 	if desired == 0 {
-		return false, "driver DaemonSet has no scheduled pods; no GPU nodes may be present"
+		return metav1.ConditionUnknown, reasonWaiting, "driver DaemonSet has no scheduled pods; no GPU nodes may be present"
 	}
 	if ready < desired || available < desired || updated < desired {
-		return false, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready, %d/%d available, %d/%d updated", ready, desired, available, desired, updated, desired)
+		return metav1.ConditionUnknown, reasonProgressing, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready, %d/%d available, %d/%d updated", ready, desired, available, desired, updated, desired)
 	}
-	return true, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready", ready, desired)
+	return metav1.ConditionTrue, reasonReady, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready", ready, desired)
 }
 
 // checkClusterPolicy reads the NVIDIA ClusterPolicy status via unstructured client.
-// ClusterPolicy.status.state is "ready" when NVIDIA's end-to-end validator has passed.
-func (r *GpuStatusReconciler) checkClusterPolicy(ctx context.Context) (bool, string) {
+// Unknown = ClusterPolicy not yet present or still converging.
+// False   = read error or ClusterPolicy in a terminal non-ready state.
+// True    = ClusterPolicy.status.state is "ready" (NVIDIA's end-to-end validator passed).
+func (r *GpuStatusReconciler) checkClusterPolicy(ctx context.Context) (metav1.ConditionStatus, string, string) {
 	cp := &unstructured.Unstructured{}
 	cp.SetGroupVersionKind(clusterPolicyGVK)
 
 	if err := r.Get(ctx, types.NamespacedName{Name: clusterPolicyName}, cp); err != nil {
 		if apierrors.IsNotFound(err) {
-			return false, "ClusterPolicy not found; GPU Operator may still be starting"
+			return metav1.ConditionUnknown, reasonWaiting, "ClusterPolicy not found; GPU Operator may still be starting"
 		}
-		return false, fmt.Sprintf("error reading ClusterPolicy: %v", err)
+		return metav1.ConditionFalse, reasonReadError, fmt.Sprintf("error reading ClusterPolicy: %v", err)
 	}
 
 	state, _, _ := unstructured.NestedString(cp.Object, "status", "state")
 	switch state {
 	case "ready":
-		return true, "ClusterPolicy state is ready; NVIDIA validator passed"
+		return metav1.ConditionTrue, reasonReady, "ClusterPolicy state is ready; NVIDIA validator passed"
 	case "notReady":
-		return false, "ClusterPolicy state is notReady; NVIDIA validator has not passed yet"
+		return metav1.ConditionUnknown, reasonProgressing, "ClusterPolicy state is notReady; NVIDIA validator has not passed yet"
 	case "ignored":
-		// "ignored" means the operator decided this policy doesn't apply — treat as not ready
-		return false, "ClusterPolicy state is ignored"
+		// "ignored" means the operator decided this policy doesn't apply
+		return metav1.ConditionUnknown, reasonWaiting, "ClusterPolicy state is ignored"
 	default:
-		return false, fmt.Sprintf("ClusterPolicy state is %q; waiting for ready", state)
+		return metav1.ConditionUnknown, reasonProgressing, fmt.Sprintf("ClusterPolicy state is %q; waiting for ready", state)
 	}
-}
-
-// computeState derives the top-level Gpu state from all four managed conditions.
-// Any False -> Error (checked first). All True -> Ready. Otherwise -> Processing.
-func computeState(conditions []metav1.Condition) gpuv1beta1.GpuState {
-	managed := []string{condPreflight, condHelmInstalled, condDriverReady, condValidatorPassed}
-
-	allTrue := true
-	for _, t := range managed {
-		c := apimeta.FindStatusCondition(conditions, t)
-		if c != nil && c.Status == metav1.ConditionFalse {
-			return gpuv1beta1.GpuStateError
-		}
-		if c == nil || c.Status != metav1.ConditionTrue {
-			allTrue = false
-		}
-	}
-	if allTrue {
-		return gpuv1beta1.GpuStateReady
-	}
-	return gpuv1beta1.GpuStateProcessing
-}
-
-// conditionMatches returns true if the named condition already has the expected boolean status.
-// Used to avoid a no-op status patch when nothing changed.
-func conditionMatches(conditions []metav1.Condition, condType string, want bool) bool {
-	c := apimeta.FindStatusCondition(conditions, condType)
-	if c == nil {
-		return false
-	}
-	if want {
-		return c.Status == metav1.ConditionTrue
-	}
-	return c.Status == metav1.ConditionFalse
-}
-
-// setCondition is a thin wrapper around apimeta.SetStatusCondition that infers
-// Status and Reason from the boolean so call sites stay readable.
-func setCondition(conditions *[]metav1.Condition, condType string, ok bool, message string, generation int64) {
-	status := metav1.ConditionTrue
-	reason := "Ready"
-	if !ok {
-		status = metav1.ConditionFalse
-		reason = "NotReady"
-	}
-	apimeta.SetStatusCondition(conditions, metav1.Condition{
-		Type:               condType,
-		Status:             status,
-		Reason:             reason,
-		Message:            message,
-		ObservedGeneration: generation,
-	})
 }
 
 // SetupWithManager registers the status reconciler and wires up watches on
 // ClusterPolicy and the driver DaemonSet. Both enqueue all existing Gpu CRs
-// so no hardcoded name is needed — works regardless of what the CR is called.
+// so no hardcoded name is needed - works regardless of what the CR is called.
 func (r *GpuStatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	enqueueGpu := handler.EnqueueRequestsFromMapFunc(
 		func(ctx context.Context, _ client.Object) []reconcile.Request {

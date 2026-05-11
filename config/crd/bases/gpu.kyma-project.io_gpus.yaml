@@ -15,11 +15,14 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.state
-      name: State
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].reason
+      name: Reason
       type: string
     - jsonPath: .status.driver.version
-      name: Driver
+      name: Driver Version
       type: string
     - jsonPath: .status.driver.nodesReady
       name: Nodes Ready
@@ -146,11 +149,6 @@ spec:
                       NVIDIA drivers.
                     format: int32
                     type: integer
-                  nodesTotal:
-                    description: nodesTotal is the total number of GPU nodes across
-                      all pools.
-                    format: int32
-                    type: integer
                   version:
                     description: version is the NVIDIA driver version reported by
                       the driver DaemonSet.
@@ -159,15 +157,6 @@ spec:
               operatorVersion:
                 description: operatorVersion is the installed NVIDIA GPU Operator
                   chart version.
-                type: string
-              state:
-                description: state is the high-level lifecycle state.
-                enum:
-                - Processing
-                - Ready
-                - Warning
-                - Error
-                - Deleting
                 type: string
             type: object
         type: object

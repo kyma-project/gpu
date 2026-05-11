@@ -1,6 +1,4 @@
 /*
-Copyright 2026 SAP SE or an SAP affiliate company and gpu contributors.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -38,11 +36,6 @@ import (
 const (
 	requeueWarn = 30 * time.Second
 	finalizer   = "gpu.kyma-project.io/gpu-operator"
-
-	// condPreflight and condHelmInstalled are stable condition types - SetStatusCondition
-	// updates them in place rather than accumulating one entry per state transition.
-	condPreflight     = "Preflight"
-	condHelmInstalled = "HelmInstalled"
 )
 
 // GpuReconciler reconciles a Gpu object.
@@ -96,7 +89,7 @@ func (r *GpuReconciler) reconcileNormal(ctx context.Context, gpu *gpuv1beta1.Gpu
 	switch pre.Outcome {
 	case detection.OutcomeWarn:
 		logger.Info("preflight warning, requeueing", "reason", pre.Reason)
-		if err := r.setPreflightCondition(ctx, gpu, metav1.ConditionFalse, "NotReady", pre.Reason, gpuv1beta1.GpuStateWarning); err != nil {
+		if err := r.setPreflightCondition(ctx, gpu, metav1.ConditionUnknown, reasonWaiting, pre.Reason); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: requeueWarn}, nil
@@ -105,7 +98,7 @@ func (r *GpuReconciler) reconcileNormal(ctx context.Context, gpu *gpuv1beta1.Gpu
 		// Hard blocker (e.g. non-Garden-Linux GPU nodes) - stop until user resolves it.
 		// No automatic requeue; the next reconcile is triggered by a CR or node change.
 		logger.Info("preflight error, stopping", "reason", pre.Reason)
-		if err := r.setPreflightCondition(ctx, gpu, metav1.ConditionFalse, "Failed", pre.Reason, gpuv1beta1.GpuStateError); err != nil {
+		if err := r.setPreflightCondition(ctx, gpu, metav1.ConditionFalse, reasonFailed, pre.Reason); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
@@ -114,9 +107,8 @@ func (r *GpuReconciler) reconcileNormal(ctx context.Context, gpu *gpuv1beta1.Gpu
 	}
 
 	// OutcomeProceed: all GPU nodes exist and run Garden Linux.
-	// State is not set here - the Helm outcome owns the state transition.
-	// If build steps below fail, status shows Preflight=True without a misleading Processing state.
-	if err := r.setPreflightConditionOnly(ctx, gpu, metav1.ConditionTrue, "Passed", "all GPU nodes are running Garden Linux"); err != nil {
+	// Helm outcome owns subsequent state transitions.
+	if err := r.setPreflightCondition(ctx, gpu, metav1.ConditionTrue, reasonPassed, "all GPU nodes are running Garden Linux"); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -133,7 +125,7 @@ func (r *GpuReconciler) reconcileNormal(ctx context.Context, gpu *gpuv1beta1.Gpu
 
 	// 3. install or upgrade
 	if err := r.Installer.InstallOrUpgrade(ctx, chartData, values); err != nil {
-		if statusErr := r.setHelmCondition(ctx, gpu, metav1.ConditionFalse, "Failed", err.Error(), gpuv1beta1.GpuStateError, ""); statusErr != nil {
+		if statusErr := r.setHelmCondition(ctx, gpu, metav1.ConditionFalse, reasonFailed, err.Error(), ""); statusErr != nil {
 			logger.Error(statusErr, "failed to update status after Helm error")
 		}
 		return ctrl.Result{}, fmt.Errorf("helm install/upgrade: %w", err)
@@ -145,11 +137,10 @@ func (r *GpuReconciler) reconcileNormal(ctx context.Context, gpu *gpuv1beta1.Gpu
 	}
 
 	// Helm applied the manifests - pods are starting but not yet ready.
-	// State stays Processing; a future status-sync reconcile transitions to Ready
-	// once the DaemonSet reports all nodes healthy.
-	if err := r.setHelmCondition(ctx, gpu, metav1.ConditionTrue, "Installed",
+	// Unknown - operator is working but the outcome (pods healthy) is not yet determined.
+	// A future status-sync reconcile transitions to Ready once the DaemonSet reports all nodes healthy.
+	if err := r.setHelmCondition(ctx, gpu, metav1.ConditionTrue, reasonInstalled,
 		fmt.Sprintf("GPU Operator %s installed successfully", chartVersion),
-		gpuv1beta1.GpuStateProcessing,
 		chartVersion,
 	); err != nil {
 		return ctrl.Result{}, err
@@ -170,7 +161,8 @@ func (r *GpuReconciler) reconcileDelete(ctx context.Context, gpu *gpuv1beta1.Gpu
 
 	// Best-effort status update - do not block deletion if this fails.
 	// The critical path is Uninstall and finalizer removal; status is cosmetic here.
-	if err := r.setHelmCondition(ctx, gpu, metav1.ConditionFalse, "Uninstalling", "uninstalling GPU Operator", gpuv1beta1.GpuStateDeleting, ""); err != nil {
+	// Unknown = in-progress; the uninstall outcome has not yet been determined.
+	if err := r.setHelmCondition(ctx, gpu, metav1.ConditionUnknown, reasonUninstalling, "uninstalling GPU Operator", ""); err != nil {
 		logger.Error(err, "failed to update status before uninstall, continuing")
 	}
 
@@ -186,27 +178,8 @@ func (r *GpuReconciler) reconcileDelete(ctx context.Context, gpu *gpuv1beta1.Gpu
 	return ctrl.Result{}, nil
 }
 
-// setPreflightCondition patches the Preflight condition and overall state in one call.
-func (r *GpuReconciler) setPreflightCondition(ctx context.Context, gpu *gpuv1beta1.Gpu, status metav1.ConditionStatus, reason, message string, state gpuv1beta1.GpuState) error {
-	patch := client.MergeFrom(gpu.DeepCopy())
-	gpu.Status.State = state
-	apimeta.SetStatusCondition(&gpu.Status.Conditions, metav1.Condition{
-		Type:               condPreflight,
-		Status:             status,
-		Reason:             reason,
-		Message:            message,
-		ObservedGeneration: gpu.Generation,
-	})
-	if err := r.Status().Patch(ctx, gpu, patch); err != nil {
-		return fmt.Errorf("patching Preflight condition: %w", err)
-	}
-	return nil
-}
-
-// setPreflightConditionOnly patches only the Preflight condition without changing state.
-// Used on OutcomeProceed so that intermediate build failures don't leave a misleading
-// Processing state — the Helm outcome owns the state transition.
-func (r *GpuReconciler) setPreflightConditionOnly(ctx context.Context, gpu *gpuv1beta1.Gpu, status metav1.ConditionStatus, reason, message string) error {
+// setPreflightCondition patches the Preflight condition and recomputes the Ready summary.
+func (r *GpuReconciler) setPreflightCondition(ctx context.Context, gpu *gpuv1beta1.Gpu, status metav1.ConditionStatus, reason, message string) error {
 	patch := client.MergeFrom(gpu.DeepCopy())
 	apimeta.SetStatusCondition(&gpu.Status.Conditions, metav1.Condition{
 		Type:               condPreflight,
@@ -215,17 +188,17 @@ func (r *GpuReconciler) setPreflightConditionOnly(ctx context.Context, gpu *gpuv
 		Message:            message,
 		ObservedGeneration: gpu.Generation,
 	})
+	apimeta.SetStatusCondition(&gpu.Status.Conditions, computeReadySummary(gpu.Status.Conditions, gpu.Generation))
 	if err := r.Status().Patch(ctx, gpu, patch); err != nil {
 		return fmt.Errorf("patching Preflight condition: %w", err)
 	}
 	return nil
 }
 
-// setHelmCondition patches the HelmInstalled condition, overall state, and optionally
-// operatorVersion - all in a single status patch to avoid split-brain between the two fields.
-func (r *GpuReconciler) setHelmCondition(ctx context.Context, gpu *gpuv1beta1.Gpu, status metav1.ConditionStatus, reason, message string, state gpuv1beta1.GpuState, operatorVersion string) error {
+// setHelmCondition patches the HelmInstalled condition, optionally operatorVersion,
+// and recomputes the Ready summary - all in a single status patch.
+func (r *GpuReconciler) setHelmCondition(ctx context.Context, gpu *gpuv1beta1.Gpu, status metav1.ConditionStatus, reason, message string, operatorVersion string) error {
 	patch := client.MergeFrom(gpu.DeepCopy())
-	gpu.Status.State = state
 	if operatorVersion != "" {
 		gpu.Status.OperatorVersion = operatorVersion
 	}
@@ -236,6 +209,7 @@ func (r *GpuReconciler) setHelmCondition(ctx context.Context, gpu *gpuv1beta1.Gp
 		Message:            message,
 		ObservedGeneration: gpu.Generation,
 	})
+	apimeta.SetStatusCondition(&gpu.Status.Conditions, computeReadySummary(gpu.Status.Conditions, gpu.Generation))
 	if err := r.Status().Patch(ctx, gpu, patch); err != nil {
 		return fmt.Errorf("patching HelmInstalled condition: %w", err)
 	}
