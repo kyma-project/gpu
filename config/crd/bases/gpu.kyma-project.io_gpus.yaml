@@ -12,7 +12,7 @@ spec:
     listKind: GpuList
     plural: gpus
     singular: gpu
-  scope: Namespaced
+  scope: Cluster
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.conditions[?(@.type=="Ready")].status

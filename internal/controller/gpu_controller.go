@@ -136,9 +136,8 @@ func (r *GpuReconciler) reconcileNormal(ctx context.Context, gpu *gpuv1beta1.Gpu
 		return ctrl.Result{}, fmt.Errorf("reading chart version: %w", err)
 	}
 
-	// Helm applied the manifests - pods are starting but not yet ready.
-	// Unknown - operator is working but the outcome (pods healthy) is not yet determined.
-	// A future status-sync reconcile transitions to Ready once the DaemonSet reports all nodes healthy.
+	// HelmInstalled=True records that Helm successfully applied the manifests.
+	// Ready remains Unknown until DriverReady and ValidatorPassed are confirmed by the status reconciler.
 	if err := r.setHelmCondition(ctx, gpu, metav1.ConditionTrue, reasonInstalled,
 		fmt.Sprintf("GPU Operator %s installed successfully", chartVersion),
 		chartVersion,
