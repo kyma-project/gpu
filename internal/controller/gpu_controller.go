@@ -19,13 +19,20 @@ import (
 	"fmt"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	gpuv1beta1 "github.com/kyma-project/gpu/api/v1beta1"
 	"github.com/kyma-project/gpu/internal/chart"
@@ -215,10 +222,67 @@ func (r *GpuReconciler) setHelmCondition(ctx context.Context, gpu *gpuv1beta1.Gp
 	return nil
 }
 
-// SetupWithManager registers the controller with the manager.
+// SetupWithManager registers the controller with the manager and wires up a Node
+// watch so that preflight errors self-heal when nodes are added, removed, or replaced.
 func (r *GpuReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	enqueueGpu := handler.EnqueueRequestsFromMapFunc(
+		func(ctx context.Context, _ client.Object) []reconcile.Request {
+			var list gpuv1beta1.GpuList
+			if err := r.List(ctx, &list); err != nil {
+				log.FromContext(ctx).Error(err, "failed to list Gpu CRs; node watch event will be lost")
+				return nil
+			}
+			reqs := make([]reconcile.Request, len(list.Items))
+			for i, gpu := range list.Items {
+				reqs[i] = reconcile.Request{
+					NamespacedName: types.NamespacedName{Name: gpu.Name},
+				}
+			}
+			return reqs
+		},
+	)
+
+	// Trigger only on GPU nodes, and on updates only when the instance-type label
+	// or OS image changes, not on every kubelet heartbeat.
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&gpuv1beta1.Gpu{}).
 		Named("gpu").
+		Watches(
+			&corev1.Node{},
+			enqueueGpu,
+			builder.WithPredicates(gpuNodeChangedPredicate()),
+		).
 		Complete(r)
+}
+
+// gpuNodeChangedPredicate returns a predicate that fires only for meaningful GPU node
+// changes: creation, deletion, label changes that affect GPU membership, or OS image
+// changes. Kubelet heartbeats (which bump ResourceVersion every ~10s) are filtered out.
+func gpuNodeChangedPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return detection.IsGPUNode(e.Object.GetLabels())
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return detection.IsGPUNode(e.Object.GetLabels())
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldNode, ok1 := e.ObjectOld.(*corev1.Node)
+			newNode, ok2 := e.ObjectNew.(*corev1.Node)
+			if !ok1 || !ok2 {
+				return false
+			}
+			wasGPU := detection.IsGPUNode(oldNode.Labels)
+			isGPU := detection.IsGPUNode(newNode.Labels)
+			if !wasGPU && !isGPU {
+				return false
+			}
+			// Fire when GPU node membership changes or OS image changes (e.g. node reprovisioned).
+			if wasGPU != isGPU {
+				return true
+			}
+			return oldNode.Status.NodeInfo.OSImage != newNode.Status.NodeInfo.OSImage
+		},
+		GenericFunc: func(event.GenericEvent) bool { return false },
+	}
 }
