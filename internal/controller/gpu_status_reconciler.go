@@ -179,6 +179,9 @@ func (r *GpuStatusReconciler) checkClusterPolicy(ctx context.Context) (metav1.Co
 
 // driverVersionFromDaemonSet extracts the driver version from the DaemonSet's first
 // container image tag (e.g. "nvcr.io/nvidia/driver:535.129.03-ubuntu22.04" -> "535.129.03").
+// This reads from Spec (the desired image), not from individual pod statuses - it reports
+// the version the cluster is converging toward. During a rolling update this will show the
+// new version while nodesReady < desired, giving users a clear picture of progress.
 // Returns empty string if the image tag is absent or unparseable.
 func driverVersionFromDaemonSet(ds *appsv1.DaemonSet) string {
 	if len(ds.Spec.Template.Spec.Containers) == 0 {

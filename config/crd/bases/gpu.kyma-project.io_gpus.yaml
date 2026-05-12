@@ -58,7 +58,7 @@ spec:
           spec:
             description: |-
               GpuSpec defines the desired state of the Gpu resource.
-              Users can optionally override driver version and operator version.
+              Users can optionally override the driver version.
               All other configuration uses sensible defaults from the NVIDIA GPU Operator chart.
             properties:
               driver:
@@ -71,11 +71,6 @@ spec:
                       If empty, the default version from the GPU Operator chart is used.
                     type: string
                 type: object
-              operatorVersion:
-                description: |-
-                  operatorVersion is the NVIDIA GPU Operator chart version to install.
-                  If empty, the version embedded in the gpu module binary is used.
-                type: string
             type: object
           status:
             description: GpuStatus defines the observed state of the Gpu resource.
