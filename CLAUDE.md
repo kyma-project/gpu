@@ -43,7 +43,7 @@ make deploy IMG=<image>
 This is a Kubernetes operator (Kubebuilder v4) that manages the NVIDIA GPU Operator lifecycle on Kyma clusters.
 
 ### CRD: `Gpu` (`api/v1beta1/`)
-Cluster-scoped singleton resource. Spec allows optional overrides for driver version (`spec.driver.version`) and operator chart version (`spec.operatorVersion`). Status tracks `operatorVersion`, `driver.version`, `driver.nodesReady`, and five conditions.
+Cluster-scoped singleton resource. Spec allows an optional override for driver version (`spec.driver.version`). Status tracks `operatorVersion`, `driver.version`, `driver.nodesReady`, and five conditions.
 
 There is no `State` enum field on the CRD. State is communicated exclusively through the conditions system described below.
 
