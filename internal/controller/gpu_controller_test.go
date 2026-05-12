@@ -194,7 +194,7 @@ var _ = Describe("GpuReconciler", func() {
 			newGpu(gpuName)
 			_, _ = reconciler.Reconcile(ctx, req) // add finalizer
 			newGpuNode("gpu-node-del", "g4dn.xlarge", "Garden Linux 1312.3")
-			defer deleteNode("gpu-node-del")
+			DeferCleanup(deleteNode, "gpu-node-del")
 			_, err := reconciler.Reconcile(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(installer.installCalls).To(Equal(1))
