@@ -181,7 +181,7 @@ func main() {
 	// +kubebuilder:scaffold:builder
 	if err := (&controller.GpuReconciler{
 		Client:    mgr.GetClient(),
-		Installer: helm.NewInstaller(mgr.GetConfig()),
+		Installer: helm.NewClient(mgr.GetConfig()),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to set up GPU reconciler")
 		os.Exit(1)

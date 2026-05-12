@@ -41,7 +41,7 @@ const (
 // computeReadySummary derives the Ready summary condition from the four managed conditions.
 // Priority: any False beats any Unknown beats all True.
 // The reason and message are taken from the first condition that determines the outcome,
-// in dependency order (Preflight → HelmInstalled → DriverReady → ValidatorPassed).
+// in dependency order (Preflight -> HelmInstalled -> DriverReady -> ValidatorPassed).
 func computeReadySummary(conditions []metav1.Condition, generation int64) metav1.Condition {
 	managed := []string{condPreflight, condHelmInstalled, condDriverReady, condValidatorPassed}
 

@@ -41,7 +41,7 @@ const (
 // GpuReconciler reconciles a Gpu object.
 type GpuReconciler struct {
 	client.Client
-	Installer *helm.Installer
+	Installer helm.Installer
 }
 
 // +kubebuilder:rbac:groups=gpu.kyma-project.io,resources=gpus,verbs=get;list;watch;create;update;patch;delete
@@ -76,8 +76,8 @@ func (r *GpuReconciler) reconcileNormal(ctx context.Context, gpu *gpuv1beta1.Gpu
 		if err := r.Update(ctx, gpu); err != nil {
 			return ctrl.Result{}, fmt.Errorf("adding finalizer: %w", err)
 		}
-		// Explicit requeue - don't rely solely on the watch event from the Update.
-		return ctrl.Result{Requeue: true}, nil
+		// Update generates a watch event that re-triggers reconcile - no explicit requeue needed.
+		return ctrl.Result{}, nil
 	}
 
 	// 1. pre-flight

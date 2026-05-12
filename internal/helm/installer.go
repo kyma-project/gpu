@@ -32,20 +32,20 @@ const (
 	releaseNamespace = "gpu-operator"
 )
 
-// Installer installs, upgrades, and uninstalls the NVIDIA GPU Operator Helm chart.
-type Installer struct {
+// Client installs, upgrades, and uninstalls the NVIDIA GPU Operator Helm chart.
+type Client struct {
 	restConfig *rest.Config
 }
 
-// NewInstaller creates an Installer that uses the given REST config to talk to the cluster.
-func NewInstaller(cfg *rest.Config) *Installer {
-	return &Installer{restConfig: cfg}
+// NewClient creates a Client that uses the given REST config to talk to the cluster.
+func NewClient(cfg *rest.Config) *Client {
+	return &Client{restConfig: cfg}
 }
 
 // InstallOrUpgrade installs the chart if no release exists, or upgrades it if one does.
 // It always returns immediately without waiting for pods to become ready - the reconciler
 // sets status to Processing and checks health on the next cycle.
-func (i *Installer) InstallOrUpgrade(ctx context.Context, chartData []byte, values map[string]interface{}) error {
+func (i *Client) InstallOrUpgrade(ctx context.Context, chartData []byte, values map[string]interface{}) error {
 	cfg, err := i.actionConfig()
 	if err != nil {
 		return err
@@ -72,7 +72,7 @@ func (i *Installer) InstallOrUpgrade(ctx context.Context, chartData []byte, valu
 }
 
 // Uninstall removes the NVIDIA GPU Operator Helm release.
-func (i *Installer) Uninstall(_ context.Context) error {
+func (i *Client) Uninstall(_ context.Context) error {
 	cfg, err := i.actionConfig()
 	if err != nil {
 		return err
@@ -97,7 +97,7 @@ func (i *Installer) Uninstall(_ context.Context) error {
 // InstalledVersion returns the chart version of the current release, or empty string
 // if no release exists. The reconciler uses this to detect when the embedded chart
 // version has changed and an upgrade is needed.
-func (i *Installer) InstalledVersion() (string, error) {
+func (i *Client) InstalledVersion() (string, error) {
 	cfg, err := i.actionConfig()
 	if err != nil {
 		return "", err
@@ -115,7 +115,7 @@ func (i *Installer) InstalledVersion() (string, error) {
 // actionConfig prepares Helm to operate on the gpu-operator namespace by wiring up
 // the cluster connection, release storage, and namespace scope - after this call,
 // install, upgrade, uninstall, and list operations are ready to run.
-func (i *Installer) actionConfig() (*action.Configuration, error) {
+func (i *Client) actionConfig() (*action.Configuration, error) {
 	getter := newRESTClientGetter(i.restConfig, releaseNamespace)
 	cfg := &action.Configuration{}
 	if err := cfg.Init(getter, releaseNamespace, "secret", noopLog); err != nil {
