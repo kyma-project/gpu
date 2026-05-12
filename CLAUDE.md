@@ -43,41 +43,53 @@ make deploy IMG=<image>
 This is a Kubernetes operator (Kubebuilder v4) that manages the NVIDIA GPU Operator lifecycle on Kyma clusters.
 
 ### CRD: `Gpu` (`api/v1beta1/`)
-Cluster-scoped singleton resource. Spec allows optional overrides for driver version and operator chart version. Status tracks `operatorVersion`, `driver.version`, `driver.nodesReady`, and five conditions.
+Cluster-scoped singleton resource. Spec allows optional overrides for driver version (`spec.driver.version`) and operator chart version (`spec.operatorVersion`). Status tracks `operatorVersion`, `driver.version`, `driver.nodesReady`, and five conditions.
+
+There is no `State` enum field on the CRD. State is communicated exclusively through the conditions system described below.
 
 ### Two Controllers (`internal/controller/`)
 
-**`GpuReconciler`** (gpu_controller.go) — owns installation:
+**`GpuReconciler`** (`gpu_controller.go`) — owns installation:
 1. Add finalizer on first reconcile
-2. Run `detection.RunPreflight` — OutcomeWarn → requeue 30s, OutcomeError → stop (self-heals via Node watch), OutcomeProceed → continue
-3. Load embedded chart + build Helm values
-4. `Installer.InstallOrUpgrade` — sets `HelmInstalled=True` condition after success
-5. On deletion: best-effort status update, then `Installer.Uninstall`, then remove finalizer
-6. Watches `Node` objects via `gpuNodeChangedPredicate` — fires on GPU node create/delete and on OS image or label changes, suppressing kubelet heartbeats. Enqueues all `Gpu` CRs so preflight errors self-heal when nodes are replaced.
+2. Run `detection.RunPreflight` — OutcomeWarn → set `Preflight=Unknown`, requeue 30s; OutcomeError → set `Preflight=False`, return with no requeue (self-heals via Node watch); OutcomeProceed → set `Preflight=True`, continue
+3. Load embedded chart bytes via `chart.GPUOperatorChart()` + build Helm values via `helm.BuildValues`
+4. Call `Installer.InstallOrUpgrade` — on success sets `HelmInstalled=True` and records `operatorVersion`; on failure sets `HelmInstalled=False`
+5. On deletion: best-effort `HelmInstalled=Unknown` status update, then `Installer.Uninstall`, then remove finalizer
+6. Watches `Node` objects via `gpuNodeChangedPredicate` — fires on GPU node create/delete and on OS image or instance-type label changes, suppressing kubelet heartbeats. Enqueues all `Gpu` CRs so preflight errors self-heal when nodes are replaced.
 
-**`GpuStatusReconciler`** (gpu_status_reconciler.go) — owns status monitoring:
-- Watches `nvidia-driver-daemonset` DaemonSet and sets `DriverReady` condition on the Gpu CR
-- Reads `ClusterPolicy.status.state` (NVIDIA's plain string field) and sets `ValidatorPassed` condition on the Gpu CR
-- Computes `Ready` summary from all four managed conditions (Preflight, HelmInstalled, DriverReady, ValidatorPassed)
+**`GpuStatusReconciler`** (`gpu_status_reconciler.go`) — owns status monitoring:
+- Guard: skips reconcile if `HelmInstalled` condition is not True (absent, False, or Unknown — Helm hasn't succeeded yet)
+- Reads `nvidia-driver-daemonset` DaemonSet status counters → sets `DriverReady` condition on the Gpu CR
+- Reads `ClusterPolicy.status.state` (a plain string field on the NVIDIA CRD) via unstructured client → sets `ValidatorPassed` condition on the Gpu CR
+- Recomputes `Ready` summary from all four managed conditions after every sync
+- Always returns `RequeueAfter: 30s` as a polling safety net
 
 ### Condition System (`internal/controller/conditions.go`)
 Five stable condition types: `Preflight`, `HelmInstalled`, `DriverReady`, `ValidatorPassed`, `Ready`.
-- The first four (`Preflight`, `HelmInstalled`, `DriverReady`, `ValidatorPassed`) are input conditions set by the two controllers.
-- `Ready` is a computed summary derived from all four inputs — False if any is False, Unknown if any is Unknown, True only when all four are True.
-- `setCondition` helper is in conditions.go (shared across both controllers in same package).
-- `conditionMatches` is used to skip no-op status patches.
+
+The first four are **inputs** — each controller writes the conditions it owns:
+- `GpuReconciler` writes `Preflight` and `HelmInstalled`
+- `GpuStatusReconciler` writes `DriverReady` and `ValidatorPassed`
+
+`Ready` is a **computed summary** — derived from the four inputs by `computeReadySummary`:
+- Any input is `False` → `Ready=False` (definitively broken)
+- Any input is `Unknown` or absent → `Ready=Unknown` (still converging)
+- All four are `True` → `Ready=True`
+
+All conditions use the tri-state (`True` / `False` / `Unknown`). `False` means definitively broken and requires user action. `Unknown` means still converging — the controller is waiting. `conditionMatches` compares status+reason+message to skip no-op status patches.
 
 ### Helm Layer (`internal/helm/`)
-- `Installer` is an interface (`interface.go`) with `InstallOrUpgrade` and `Uninstall`. The concrete type is `Client` (`installer.go`), which wraps Helm v3 SDK `action.Configuration` with Kubernetes secrets as storage backend. Tests inject a `fakeInstaller`.
-- `BuildValues(spec, ClusterInfo)` merges embedded Garden Linux base values with user spec overrides.
-- Embedded chart is a `.tgz` file in `internal/chart/gpu-operator/`. `chart.GPUOperatorChart()` returns the bytes; `chart.GPUOperatorChartVersion()` parses its semver.
+- `Installer` is an interface (`interface.go`) with `InstallOrUpgrade` and `Uninstall`. The concrete type is `Client` (`installer.go`), which wraps Helm v3 SDK `action.Configuration` with Kubernetes secrets as the storage backend. Tests inject a `fakeInstaller`.
+- `BuildValues(spec, ClusterInfo)` merges the embedded Garden Linux base values with user spec overrides. `ClusterInfo.GardenLinux` is always `true` in production (preflight guarantees it).
 
 ### Detection (`internal/detection/`)
-- `IsGPUNode(labels)` checks `node.kubernetes.io/instance-type` against known GPU prefixes (AWS g4dn/g6, GCP g2-, Azure Standard_NC).
+- `IsGPUNode(labels)` checks `node.kubernetes.io/instance-type` (exported as `detection.InstanceTypeLabel`) against known GPU prefixes (AWS g4dn/g6, GCP g2-, Azure Standard_NC).
 - `RunPreflight` returns Proceed/Warn/Error: no GPU nodes → Warn; any non-Garden-Linux GPU node → Error.
 
 ### Embedded Artifacts
 `internal/chart/gpu-operator/*.tgz` and `internal/chart/values/gardenlinux.yaml` are embedded via `//go:embed`. They must exist before building; `make chart-download` and `make values-download` fetch them. The `build` target runs `chart-verify` to guard against missing files.
+
+`chart.GPUOperatorChart()` returns the raw bytes of the highest semver `.tgz` in the embedded directory (parsed via `github.com/Masterminds/semver/v3`). `chart.GPUOperatorChartVersion()` returns the version string of the same file by trimming the `gpu-operator-` prefix and `.tgz` suffix from the filename.
 
 ### Testing Conventions
 Two styles are used deliberately:
@@ -88,6 +100,6 @@ Two styles are used deliberately:
 Run configuration: **Go Build**, kind = **Package**, package path = `github.com/kyma-project/gpu/cmd`. Set `KUBECONFIG` env var to your cluster kubeconfig. The controller will connect to the remote cluster and begin reconciling immediately.
 
 ## Key Constraints
-- Only Garden Linux nodes are supported for GPU workloads (v1 scope). Non-Garden-Linux GPU nodes → hard error, no automatic requeue — but the Node watch self-heals when the node is replaced or its OS image changes.
-- The embedded chart must be a single `.tgz` in `internal/chart/gpu-operator/`. If multiple versions exist, `chart.GPUOperatorChart()` picks the highest semver.
+- Only Garden Linux nodes are supported for GPU workloads (v1 scope). Non-Garden-Linux GPU nodes → `Preflight=False`, no automatic requeue — but the Node watch self-heals when the node is replaced or its OS image changes.
+- The embedded chart must be `.tgz` files in `internal/chart/gpu-operator/`. If multiple versions exist, `chart.GPUOperatorChart()` picks the highest semver.
 - RBAC markers in `gpu_controller.go` use a catch-all `"*"/"*"` rule because Helm applies arbitrary CRDs. `make manifests` regenerates `config/rbac/role.yaml` from these markers.
