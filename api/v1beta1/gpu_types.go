@@ -29,17 +29,12 @@ type DriverSpec struct {
 }
 
 // GpuSpec defines the desired state of the Gpu resource.
-// Users can optionally override driver version and operator version.
+// Users can optionally override the driver version.
 // All other configuration uses sensible defaults from the NVIDIA GPU Operator chart.
 type GpuSpec struct {
 	// driver allows optional override of the NVIDIA driver configuration.
 	// +optional
 	Driver *DriverSpec `json:"driver,omitempty"`
-
-	// operatorVersion is the NVIDIA GPU Operator chart version to install.
-	// If empty, the version embedded in the gpu module binary is used.
-	// +optional
-	OperatorVersion string `json:"operatorVersion,omitempty"`
 }
 
 // DriverStatus reports the observed state of the NVIDIA driver across GPU nodes.

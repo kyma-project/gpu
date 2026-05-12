@@ -17,6 +17,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -88,7 +89,7 @@ func (r *GpuStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	driverStatus, driverReason, driverMsg := r.checkDriverDaemonSet(ctx)
+	driverStatus, driverReason, driverMsg, driverInfo := r.checkDriverDaemonSet(ctx)
 	validatorStatus, validatorReason, validatorMsg := r.checkClusterPolicy(ctx)
 
 	scratch := append([]metav1.Condition(nil), gpu.Status.Conditions...)
@@ -97,12 +98,14 @@ func (r *GpuStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	apimeta.SetStatusCondition(&scratch, computeReadySummary(scratch, gpu.Generation))
 
 	if conditionMatches(gpu.Status.Conditions, condDriverReady, driverStatus, driverReason, driverMsg) &&
-		conditionMatches(gpu.Status.Conditions, condValidatorPassed, validatorStatus, validatorReason, validatorMsg) {
+		conditionMatches(gpu.Status.Conditions, condValidatorPassed, validatorStatus, validatorReason, validatorMsg) &&
+		driverStatusMatches(gpu.Status.Driver, driverInfo) {
 		return ctrl.Result{RequeueAfter: requeueWarn}, nil
 	}
 
 	patch := client.MergeFrom(gpu.DeepCopy())
 	gpu.Status.Conditions = scratch
+	gpu.Status.Driver = driverInfo
 
 	if err := r.Status().Patch(ctx, gpu, patch); err != nil {
 		return ctrl.Result{}, fmt.Errorf("patching Gpu status: %w", err)
@@ -112,17 +115,18 @@ func (r *GpuStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return ctrl.Result{RequeueAfter: requeueWarn}, nil
 }
 
-// checkDriverDaemonSet returns the condition status, reason, and message for DriverReady.
+// checkDriverDaemonSet returns the condition status, reason, message, and observed
+// driver info for DriverReady.
 // Unknown = DaemonSet not yet present or pods still rolling out (outcome undetermined).
 // False   = DaemonSet exists but is definitively not healthy (e.g. read error).
 // True    = all nodes ready, available, and updated.
-func (r *GpuStatusReconciler) checkDriverDaemonSet(ctx context.Context) (metav1.ConditionStatus, string, string) {
+func (r *GpuStatusReconciler) checkDriverDaemonSet(ctx context.Context) (metav1.ConditionStatus, string, string, *gpuv1beta1.DriverStatus) {
 	ds := &appsv1.DaemonSet{}
 	if err := r.Get(ctx, types.NamespacedName{Name: driverDaemonSetName, Namespace: gpuOperatorNamespace}, ds); err != nil {
 		if apierrors.IsNotFound(err) {
-			return metav1.ConditionUnknown, reasonWaiting, "nvidia-driver-daemonset not found; driver installation may still be in progress"
+			return metav1.ConditionUnknown, reasonWaiting, "nvidia-driver-daemonset not found; driver installation may still be in progress", nil
 		}
-		return metav1.ConditionFalse, reasonReadError, fmt.Sprintf("error reading driver DaemonSet: %v", err)
+		return metav1.ConditionFalse, reasonReadError, fmt.Sprintf("error reading driver DaemonSet: %v", err), nil
 	}
 
 	desired := ds.Status.DesiredNumberScheduled
@@ -130,13 +134,18 @@ func (r *GpuStatusReconciler) checkDriverDaemonSet(ctx context.Context) (metav1.
 	available := ds.Status.NumberAvailable
 	updated := ds.Status.UpdatedNumberScheduled
 
+	driverInfo := &gpuv1beta1.DriverStatus{
+		NodesReady: ready,
+		Version:    driverVersionFromDaemonSet(ds),
+	}
+
 	if desired == 0 {
-		return metav1.ConditionUnknown, reasonWaiting, "driver DaemonSet has no scheduled pods; no GPU nodes may be present"
+		return metav1.ConditionUnknown, reasonWaiting, "driver DaemonSet has no scheduled pods; no GPU nodes may be present", driverInfo
 	}
 	if ready < desired || available < desired || updated < desired {
-		return metav1.ConditionUnknown, reasonProgressing, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready, %d/%d available, %d/%d updated", ready, desired, available, desired, updated, desired)
+		return metav1.ConditionUnknown, reasonProgressing, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready, %d/%d available, %d/%d updated", ready, desired, available, desired, updated, desired), driverInfo
 	}
-	return metav1.ConditionTrue, reasonReady, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready", ready, desired)
+	return metav1.ConditionTrue, reasonReady, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready", ready, desired), driverInfo
 }
 
 // checkClusterPolicy reads the NVIDIA ClusterPolicy status via unstructured client.
@@ -166,6 +175,38 @@ func (r *GpuStatusReconciler) checkClusterPolicy(ctx context.Context) (metav1.Co
 	default:
 		return metav1.ConditionUnknown, reasonProgressing, fmt.Sprintf("ClusterPolicy state is %q; waiting for ready", state)
 	}
+}
+
+// driverVersionFromDaemonSet extracts the driver version from the DaemonSet's first
+// container image tag (e.g. "nvcr.io/nvidia/driver:535.129.03-ubuntu22.04" -> "535.129.03").
+// Returns empty string if the image tag is absent or unparseable.
+func driverVersionFromDaemonSet(ds *appsv1.DaemonSet) string {
+	if len(ds.Spec.Template.Spec.Containers) == 0 {
+		return ""
+	}
+	image := ds.Spec.Template.Spec.Containers[0].Image
+	if idx := strings.LastIndex(image, ":"); idx >= 0 {
+		tag := image[idx+1:]
+		// Tags are formatted as "<version>-<os>" (e.g. "535.129.03-ubuntu22.04").
+		// Strip the OS suffix if present.
+		if dashIdx := strings.Index(tag, "-"); dashIdx >= 0 {
+			return tag[:dashIdx]
+		}
+		return tag
+	}
+	return ""
+}
+
+// driverStatusMatches returns true when the existing driver status already reflects
+// the observed values, used to skip a no-op status patch.
+func driverStatusMatches(existing *gpuv1beta1.DriverStatus, observed *gpuv1beta1.DriverStatus) bool {
+	if observed == nil {
+		return existing == nil
+	}
+	if existing == nil {
+		return false
+	}
+	return existing.Version == observed.Version && existing.NodesReady == observed.NodesReady
 }
 
 // SetupWithManager registers the status reconciler and wires up watches on
