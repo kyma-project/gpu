@@ -89,6 +89,7 @@ func (r *GpuReconciler) reconcileNormal(ctx context.Context, gpu *gpuv1beta1.Gpu
 
 	// 1. pre-flight
 	pre, err := detection.RunPreflight(ctx, r.Client)
+
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("running preflight: %w", err)
 	}

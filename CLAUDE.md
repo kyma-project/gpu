@@ -51,18 +51,19 @@ Cluster-scoped singleton resource. Spec allows optional overrides for driver ver
 1. Add finalizer on first reconcile
 2. Run `detection.RunPreflight` — OutcomeWarn → requeue 30s, OutcomeError → stop (self-heals via Node watch), OutcomeProceed → continue
 3. Load embedded chart + build Helm values
-4. `Installer.InstallOrUpgrade` — sets `state=Processing` after success
+4. `Installer.InstallOrUpgrade` — sets `HelmInstalled=True` condition after success
 5. On deletion: best-effort status update, then `Installer.Uninstall`, then remove finalizer
 6. Watches `Node` objects via `gpuNodeChangedPredicate` — fires on GPU node create/delete and on OS image or label changes, suppressing kubelet heartbeats. Enqueues all `Gpu` CRs so preflight errors self-heal when nodes are replaced.
 
 **`GpuStatusReconciler`** (gpu_status_reconciler.go) — owns status monitoring:
-- Watches `nvidia-driver-daemonset` DaemonSet for `DriverReady` condition
-- Watches `ClusterPolicy` (NVIDIA CRD) for `ValidatorPassed` condition
+- Watches `nvidia-driver-daemonset` DaemonSet and sets `DriverReady` condition on the Gpu CR
+- Reads `ClusterPolicy.status.state` (NVIDIA's plain string field) and sets `ValidatorPassed` condition on the Gpu CR
 - Computes `Ready` summary from all four managed conditions (Preflight, HelmInstalled, DriverReady, ValidatorPassed)
 
 ### Condition System (`internal/controller/conditions.go`)
 Five stable condition types: `Preflight`, `HelmInstalled`, `DriverReady`, `ValidatorPassed`, `Ready`.
-- `Ready` is a computed summary — False if any managed condition is False, Unknown if any is Unknown, True only when all four are True.
+- The first four (`Preflight`, `HelmInstalled`, `DriverReady`, `ValidatorPassed`) are input conditions set by the two controllers.
+- `Ready` is a computed summary derived from all four inputs — False if any is False, Unknown if any is Unknown, True only when all four are True.
 - `setCondition` helper is in conditions.go (shared across both controllers in same package).
 - `conditionMatches` is used to skip no-op status patches.
 
@@ -77,9 +78,6 @@ Five stable condition types: `Preflight`, `HelmInstalled`, `DriverReady`, `Valid
 
 ### Embedded Artifacts
 `internal/chart/gpu-operator/*.tgz` and `internal/chart/values/gardenlinux.yaml` are embedded via `//go:embed`. They must exist before building; `make chart-download` and `make values-download` fetch them. The `build` target runs `chart-verify` to guard against missing files.
-
-### Status vs State
-The CRD has both `Status.State` (enum: Processing/Warning/Error/Deleting/Ready) and `Status.Conditions`. `GpuReconciler` sets state during install transitions; `GpuStatusReconciler` transitions to `Ready` once all conditions are True.
 
 ### Testing Conventions
 Two styles are used deliberately:
