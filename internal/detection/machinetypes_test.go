@@ -46,7 +46,7 @@ func TestIsGPUNode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := IsGPUNode(map[string]string{instanceTypeLabel: tt.instanceType})
+			got := IsGPUNode(map[string]string{InstanceTypeLabel: tt.instanceType})
 			if got != tt.want {
 				t.Errorf("IsGPUNode(%q) = %v, want %v", tt.instanceType, got, tt.want)
 			}
@@ -61,7 +61,7 @@ func TestIsGPUNodeMissingLabel(t *testing.T) {
 }
 
 func TestIsGPUNodeEmptyLabel(t *testing.T) {
-	if IsGPUNode(map[string]string{instanceTypeLabel: ""}) {
+	if IsGPUNode(map[string]string{InstanceTypeLabel: ""}) {
 		t.Error("IsGPUNode with empty instance-type label should return false")
 	}
 }

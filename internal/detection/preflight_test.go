@@ -30,7 +30,7 @@ func gpuNode(name, instanceType, osImage string) *corev1.Node {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
-				instanceTypeLabel: instanceType,
+				InstanceTypeLabel: instanceType,
 			},
 		},
 		Status: corev1.NodeStatus{
@@ -43,7 +43,7 @@ func systemNode(name string) *corev1.Node {
 	return &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
-			Labels: map[string]string{instanceTypeLabel: "m5.xlarge"},
+			Labels: map[string]string{InstanceTypeLabel: "m5.xlarge"},
 		},
 		Status: corev1.NodeStatus{
 			NodeInfo: corev1.NodeSystemInfo{OSImage: "Ubuntu 22.04"},

@@ -20,6 +20,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+
+	"github.com/kyma-project/gpu/internal/detection"
 )
 
 const (
@@ -27,13 +29,12 @@ const (
 	nonGPUInstanceType = "m5.large"
 	gardenLinuxOS      = "Garden Linux 1312.3"
 	ubuntuOS           = "Ubuntu 22.04"
-	instanceTypeLabel  = "node.kubernetes.io/instance-type"
 )
 
 func gpuNode(osImage string) *corev1.Node {
 	return &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: map[string]string{instanceTypeLabel: gpuInstanceType},
+			Labels: map[string]string{detection.InstanceTypeLabel: gpuInstanceType},
 		},
 		Status: corev1.NodeStatus{
 			NodeInfo: corev1.NodeSystemInfo{OSImage: osImage},
@@ -44,7 +45,7 @@ func gpuNode(osImage string) *corev1.Node {
 func nonGPUNode() *corev1.Node {
 	return &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: map[string]string{instanceTypeLabel: nonGPUInstanceType},
+			Labels: map[string]string{detection.InstanceTypeLabel: nonGPUInstanceType},
 		},
 	}
 }

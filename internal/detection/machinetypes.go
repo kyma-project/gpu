@@ -30,13 +30,13 @@ var instanceTypePrefixes = []string{
 	"Standard_NC",
 }
 
-// Label key that Gardener sets on every node at registration time
-const instanceTypeLabel = "node.kubernetes.io/instance-type"
+// InstanceTypeLabel is the label key that Gardener sets on every node at registration time.
+const InstanceTypeLabel = "node.kubernetes.io/instance-type"
 
 // IsGPUNode returns true if the node's instance type label matches a known GPU instance
 // type prefix. Returns false if the label is absent or does not match any GPU prefix.
 func IsGPUNode(labels map[string]string) bool {
-	instanceType, ok := labels[instanceTypeLabel]
+	instanceType, ok := labels[InstanceTypeLabel]
 	if !ok || instanceType == "" {
 		return false
 	}
