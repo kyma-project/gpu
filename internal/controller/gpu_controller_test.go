@@ -75,7 +75,7 @@ var _ = Describe("GpuReconciler", func() {
 	})
 
 	Describe("finalizer", func() {
-		It("adds the finalizer on first reconcile and requeues", func() {
+		It("adds the finalizer on first reconcile without explicit requeue", func() {
 			By("creating a Gpu CR with no finalizer")
 			newGpu(gpuName)
 

@@ -20,6 +20,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -255,16 +256,14 @@ func setHelmInstalledTrue(gpuName string) {
 	gpu := &gpuv1beta1.Gpu{}
 	Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
 	patch := gpu.DeepCopy()
-	metav1cond := metav1.Condition{
+	apimeta.SetStatusCondition(&gpu.Status.Conditions, metav1.Condition{
 		Type:               condHelmInstalled,
 		Status:             metav1.ConditionTrue,
 		Reason:             reasonInstalled,
 		Message:            "installed",
 		ObservedGeneration: gpu.Generation,
-		LastTransitionTime: metav1.Now(),
-	}
-	gpu.Status.Conditions = append(gpu.Status.Conditions, metav1cond)
-	Expect(k8sClient.Status().Patch(ctx, gpu, client_mergeFrom(patch))).To(Succeed())
+	})
+	Expect(k8sClient.Status().Patch(ctx, gpu, client.MergeFrom(patch))).To(Succeed())
 }
 
 // setHelmInstalledFalse patches the Gpu status to simulate a failed Helm install.
@@ -272,15 +271,14 @@ func setHelmInstalledFalse(gpuName string) {
 	gpu := &gpuv1beta1.Gpu{}
 	Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
 	patch := gpu.DeepCopy()
-	gpu.Status.Conditions = append(gpu.Status.Conditions, metav1.Condition{
+	apimeta.SetStatusCondition(&gpu.Status.Conditions, metav1.Condition{
 		Type:               condHelmInstalled,
 		Status:             metav1.ConditionFalse,
 		Reason:             reasonFailed,
 		Message:            "helm failed",
 		ObservedGeneration: gpu.Generation,
-		LastTransitionTime: metav1.Now(),
 	})
-	Expect(k8sClient.Status().Patch(ctx, gpu, client_mergeFrom(patch))).To(Succeed())
+	Expect(k8sClient.Status().Patch(ctx, gpu, client.MergeFrom(patch))).To(Succeed())
 }
 
 // setPreflightTrue patches the Gpu status to simulate a passed preflight check.
@@ -288,15 +286,14 @@ func setPreflightTrue(gpuName string) {
 	gpu := &gpuv1beta1.Gpu{}
 	Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
 	patch := gpu.DeepCopy()
-	gpu.Status.Conditions = append(gpu.Status.Conditions, metav1.Condition{
+	apimeta.SetStatusCondition(&gpu.Status.Conditions, metav1.Condition{
 		Type:               condPreflight,
 		Status:             metav1.ConditionTrue,
 		Reason:             reasonPassed,
 		Message:            "passed",
 		ObservedGeneration: gpu.Generation,
-		LastTransitionTime: metav1.Now(),
 	})
-	Expect(k8sClient.Status().Patch(ctx, gpu, client_mergeFrom(patch))).To(Succeed())
+	Expect(k8sClient.Status().Patch(ctx, gpu, client.MergeFrom(patch))).To(Succeed())
 }
 
 // createDriverDaemonSet creates the nvidia-driver-daemonset in gpu-operator namespace
@@ -355,10 +352,4 @@ func deleteClusterPolicy(name string) {
 		return
 	}
 	_ = k8sClient.Delete(ctx, cp)
-}
-
-// client_mergeFrom is a local alias to avoid importing sigs.k8s.io/controller-runtime/pkg/client
-// directly in the test file alongside the dot-import of gomega.
-func client_mergeFrom(base *gpuv1beta1.Gpu) client.Patch {
-	return client.MergeFrom(base)
 }
