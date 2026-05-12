@@ -5,5 +5,4 @@ metadata:
     app.kubernetes.io/name: gpu
     app.kubernetes.io/managed-by: kustomize
   name: gpu
-  namespace: kyma-system
 spec: {}
