@@ -39,7 +39,7 @@ import (
 
 const (
 	clusterPolicyName    = "cluster-policy"
-	driverDaemonSetLabel = "nvidia-driver-daemonset"
+	driverAppLabel       = "nvidia-driver-daemonset"
 	gpuOperatorNamespace = "gpu-operator"
 )
 
@@ -128,7 +128,7 @@ func (r *GpuStatusReconciler) checkDriverDaemonSet(ctx context.Context) (metav1.
 	dsList := &appsv1.DaemonSetList{}
 	if err := r.List(ctx, dsList,
 		client.InNamespace(gpuOperatorNamespace),
-		client.MatchingLabels{"app": driverDaemonSetLabel},
+		client.MatchingLabels{"app": driverAppLabel},
 	); err != nil {
 		return metav1.ConditionFalse, reasonReadError, fmt.Sprintf("error listing driver DaemonSets: %v", err), nil
 	}
@@ -264,7 +264,7 @@ func (r *GpuStatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			enqueueGpu,
 			builder.WithPredicates(
 				predicate.NewPredicateFuncs(func(obj client.Object) bool {
-					return obj.GetLabels()["app"] == driverDaemonSetLabel &&
+					return obj.GetLabels()["app"] == driverAppLabel &&
 						obj.GetNamespace() == gpuOperatorNamespace
 				}),
 			),

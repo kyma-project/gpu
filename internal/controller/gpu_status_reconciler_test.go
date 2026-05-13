@@ -45,7 +45,7 @@ var _ = Describe("GpuStatusReconciler", func() {
 
 	AfterEach(func() {
 		deleteGpu(gpuName)
-		deleteDaemonSet(driverDaemonSetLabel, gpuOperatorNamespace)
+		deleteAllDriverDaemonSets(gpuOperatorNamespace)
 		deleteClusterPolicy(clusterPolicyName)
 	})
 
@@ -131,7 +131,6 @@ var _ = Describe("GpuStatusReconciler", func() {
 			// Simulates a node pool with two kernel versions: 2 nodes each, both fully ready.
 			createDriverDaemonSet(2, 2, 2, 2)
 			createDriverDaemonSetNamed("nvidia-driver-daemonset-6.19.0-cloud-amd64", 2, 2, 2, 2)
-			DeferCleanup(deleteDaemonSet, "nvidia-driver-daemonset-6.19.0-cloud-amd64", gpuOperatorNamespace)
 
 			_, err := reconciler.Reconcile(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
@@ -144,7 +143,6 @@ var _ = Describe("GpuStatusReconciler", func() {
 		It("sets DriverReady=Unknown while one of multiple DaemonSets is still rolling out", func() {
 			createDriverDaemonSet(2, 2, 2, 2)
 			createDriverDaemonSetNamed("nvidia-driver-daemonset-6.19.0-cloud-amd64", 2, 1, 1, 1)
-			DeferCleanup(deleteDaemonSet, "nvidia-driver-daemonset-6.19.0-cloud-amd64", gpuOperatorNamespace)
 
 			_, err := reconciler.Reconcile(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
@@ -329,9 +327,9 @@ func setPreflightTrue(gpuName string) {
 func createDriverDaemonSet(desired, ready, available, updated int32) {
 	ds := &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      driverDaemonSetLabel,
+			Name:      driverAppLabel,
 			Namespace: gpuOperatorNamespace,
-			Labels:    map[string]string{"app": driverDaemonSetLabel},
+			Labels:    map[string]string{"app": driverAppLabel},
 		},
 		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
@@ -362,6 +360,22 @@ func deleteDaemonSet(name, namespace string) {
 	_ = k8sClient.Delete(ctx, ds)
 }
 
+// deleteAllDriverDaemonSets removes all DaemonSets with the driver app label in the given
+// namespace. Used in AfterEach to guarantee cleanup even when a test fails before DeferCleanup
+// is registered.
+func deleteAllDriverDaemonSets(namespace string) {
+	dsList := &appsv1.DaemonSetList{}
+	if err := k8sClient.List(ctx, dsList,
+		client.InNamespace(namespace),
+		client.MatchingLabels{"app": driverAppLabel},
+	); err != nil {
+		return
+	}
+	for i := range dsList.Items {
+		_ = k8sClient.Delete(ctx, &dsList.Items[i])
+	}
+}
+
 // createDriverDaemonSetNamed creates a driver DaemonSet with an explicit name but the
 // same app label, simulating NVIDIA's per-kernel-version DaemonSet naming scheme.
 func createDriverDaemonSetNamed(name string, desired, ready, available, updated int32) {
@@ -369,7 +383,7 @@ func createDriverDaemonSetNamed(name string, desired, ready, available, updated 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: gpuOperatorNamespace,
-			Labels:    map[string]string{"app": driverDaemonSetLabel},
+			Labels:    map[string]string{"app": driverAppLabel},
 		},
 		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
