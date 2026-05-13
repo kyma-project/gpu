@@ -45,7 +45,7 @@ var _ = Describe("GpuStatusReconciler", func() {
 
 	AfterEach(func() {
 		deleteGpu(gpuName)
-		deleteDaemonSet(driverDaemonSetName, gpuOperatorNamespace)
+		deleteDaemonSet(driverDaemonSetLabel, gpuOperatorNamespace)
 		deleteClusterPolicy(clusterPolicyName)
 	})
 
@@ -125,6 +125,34 @@ var _ = Describe("GpuStatusReconciler", func() {
 			Expect(cond.Status).To(Equal(metav1.ConditionTrue))
 			Expect(cond.Reason).To(Equal(reasonReady))
 			Expect(cond.Message).To(ContainSubstring("3/3"))
+		})
+
+		It("aggregates across multiple DaemonSets (mixed kernel versions)", func() {
+			// Simulates a node pool with two kernel versions: 2 nodes each, both fully ready.
+			createDriverDaemonSet(2, 2, 2, 2)
+			createDriverDaemonSetNamed("nvidia-driver-daemonset-6.19.0-cloud-amd64", 2, 2, 2, 2)
+			DeferCleanup(deleteDaemonSet, "nvidia-driver-daemonset-6.19.0-cloud-amd64", gpuOperatorNamespace)
+
+			_, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+
+			cond := getCondition(gpuName, condDriverReady)
+			Expect(cond.Status).To(Equal(metav1.ConditionTrue))
+			Expect(cond.Message).To(ContainSubstring("4/4"), "should aggregate totals across both DaemonSets")
+		})
+
+		It("sets DriverReady=Unknown while one of multiple DaemonSets is still rolling out", func() {
+			createDriverDaemonSet(2, 2, 2, 2)
+			createDriverDaemonSetNamed("nvidia-driver-daemonset-6.19.0-cloud-amd64", 2, 1, 1, 1)
+			DeferCleanup(deleteDaemonSet, "nvidia-driver-daemonset-6.19.0-cloud-amd64", gpuOperatorNamespace)
+
+			_, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+
+			cond := getCondition(gpuName, condDriverReady)
+			Expect(cond.Status).To(Equal(metav1.ConditionUnknown))
+			Expect(cond.Reason).To(Equal(reasonProgressing))
+			Expect(cond.Message).To(ContainSubstring("3/4"), "should reflect aggregated ready/desired")
 		})
 	})
 
@@ -301,8 +329,9 @@ func setPreflightTrue(gpuName string) {
 func createDriverDaemonSet(desired, ready, available, updated int32) {
 	ds := &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      driverDaemonSetName,
+			Name:      driverDaemonSetLabel,
 			Namespace: gpuOperatorNamespace,
+			Labels:    map[string]string{"app": driverDaemonSetLabel},
 		},
 		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
@@ -331,6 +360,35 @@ func deleteDaemonSet(name, namespace string) {
 		return
 	}
 	_ = k8sClient.Delete(ctx, ds)
+}
+
+// createDriverDaemonSetNamed creates a driver DaemonSet with an explicit name but the
+// same app label, simulating NVIDIA's per-kernel-version DaemonSet naming scheme.
+func createDriverDaemonSetNamed(name string, desired, ready, available, updated int32) {
+	ds := &appsv1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: gpuOperatorNamespace,
+			Labels:    map[string]string{"app": driverDaemonSetLabel},
+		},
+		Spec: appsv1.DaemonSetSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": name},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": name}},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "driver", Image: "nvcr.io/nvidia/driver:latest"}}},
+			},
+		},
+	}
+	Expect(k8sClient.Create(ctx, ds)).To(Succeed())
+	ds.Status = appsv1.DaemonSetStatus{
+		DesiredNumberScheduled: desired,
+		NumberReady:            ready,
+		NumberAvailable:        available,
+		UpdatedNumberScheduled: updated,
+	}
+	Expect(k8sClient.Status().Update(ctx, ds)).To(Succeed())
 }
 
 // createClusterPolicy creates an NVIDIA ClusterPolicy unstructured object with the

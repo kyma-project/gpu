@@ -39,7 +39,7 @@ import (
 
 const (
 	clusterPolicyName    = "cluster-policy"
-	driverDaemonSetName  = "nvidia-driver-daemonset"
+	driverDaemonSetLabel = "nvidia-driver-daemonset"
 	gpuOperatorNamespace = "gpu-operator"
 )
 
@@ -118,34 +118,54 @@ func (r *GpuStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 // checkDriverDaemonSet returns the condition status, reason, message, and observed
 // driver info for DriverReady.
 // Unknown = DaemonSet not yet present or pods still rolling out (outcome undetermined).
-// False   = DaemonSet exists but is definitively not healthy (e.g. read error).
-// True    = all nodes ready, available, and updated.
+// False   = list error.
+// True    = all nodes ready, available, and updated across all driver DaemonSets.
+//
+// NVIDIA creates one DaemonSet per kernel version (e.g. nvidia-driver-daemonset-6.18.19-...)
+// so a cluster with mixed kernel versions has multiple DaemonSets. We aggregate across all
+// of them: DriverReady=True only when every node on every kernel version has a ready driver.
 func (r *GpuStatusReconciler) checkDriverDaemonSet(ctx context.Context) (metav1.ConditionStatus, string, string, *gpuv1beta1.DriverStatus) {
-	ds := &appsv1.DaemonSet{}
-	if err := r.Get(ctx, types.NamespacedName{Name: driverDaemonSetName, Namespace: gpuOperatorNamespace}, ds); err != nil {
-		if apierrors.IsNotFound(err) {
-			return metav1.ConditionUnknown, reasonWaiting, "nvidia-driver-daemonset not found; driver installation may still be in progress", nil
-		}
-		return metav1.ConditionFalse, reasonReadError, fmt.Sprintf("error reading driver DaemonSet: %v", err), nil
+	dsList := &appsv1.DaemonSetList{}
+	if err := r.List(ctx, dsList,
+		client.InNamespace(gpuOperatorNamespace),
+		client.MatchingLabels{"app": driverDaemonSetLabel},
+	); err != nil {
+		return metav1.ConditionFalse, reasonReadError, fmt.Sprintf("error listing driver DaemonSets: %v", err), nil
+	}
+	if len(dsList.Items) == 0 {
+		return metav1.ConditionUnknown, reasonWaiting, "nvidia-driver-daemonset not found; driver installation may still be in progress", nil
 	}
 
-	desired := ds.Status.DesiredNumberScheduled
-	ready := ds.Status.NumberReady
-	available := ds.Status.NumberAvailable
-	updated := ds.Status.UpdatedNumberScheduled
+	var totalDesired, totalReady, totalAvailable, totalUpdated int32
+	for i := range dsList.Items {
+		ds := &dsList.Items[i]
+		totalDesired += ds.Status.DesiredNumberScheduled
+		totalReady += ds.Status.NumberReady
+		totalAvailable += ds.Status.NumberAvailable
+		totalUpdated += ds.Status.UpdatedNumberScheduled
+	}
+
+	// Version: report only when all DaemonSets agree (i.e. not mid-upgrade).
+	version := driverVersionFromDaemonSet(&dsList.Items[0])
+	for i := 1; i < len(dsList.Items); i++ {
+		if driverVersionFromDaemonSet(&dsList.Items[i]) != version {
+			version = ""
+			break
+		}
+	}
 
 	driverInfo := &gpuv1beta1.DriverStatus{
-		NodesReady: ready,
-		Version:    driverVersionFromDaemonSet(ds),
+		NodesReady: totalReady,
+		Version:    version,
 	}
 
-	if desired == 0 {
+	if totalDesired == 0 {
 		return metav1.ConditionUnknown, reasonWaiting, "driver DaemonSet has no scheduled pods; no GPU nodes may be present", driverInfo
 	}
-	if ready < desired || available < desired || updated < desired {
-		return metav1.ConditionUnknown, reasonProgressing, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready, %d/%d available, %d/%d updated", ready, desired, available, desired, updated, desired), driverInfo
+	if totalReady < totalDesired || totalAvailable < totalDesired || totalUpdated < totalDesired {
+		return metav1.ConditionUnknown, reasonProgressing, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready, %d/%d available, %d/%d updated", totalReady, totalDesired, totalAvailable, totalDesired, totalUpdated, totalDesired), driverInfo
 	}
-	return metav1.ConditionTrue, reasonReady, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready", ready, desired), driverInfo
+	return metav1.ConditionTrue, reasonReady, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready", totalReady, totalDesired), driverInfo
 }
 
 // checkClusterPolicy reads the NVIDIA ClusterPolicy status via unstructured client.
@@ -233,23 +253,18 @@ func (r *GpuStatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	)
 
-	clusterPolicyObject := &unstructured.Unstructured{}
-	clusterPolicyObject.SetGroupVersionKind(clusterPolicyGVK)
-
+	// ClusterPolicy watch is intentionally omitted: the CRD is installed by Helm
+	// and does not exist on a fresh cluster. The 30s RequeueAfter polling is
+	// sufficient to pick up state changes after Helm installs it.
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&gpuv1beta1.Gpu{}).
 		Named("gpu-status").
-		Watches(
-			clusterPolicyObject,
-			enqueueGpu,
-			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
-		).
 		Watches(
 			&appsv1.DaemonSet{},
 			enqueueGpu,
 			builder.WithPredicates(
 				predicate.NewPredicateFuncs(func(obj client.Object) bool {
-					return obj.GetName() == driverDaemonSetName &&
+					return obj.GetLabels()["app"] == driverDaemonSetLabel &&
 						obj.GetNamespace() == gpuOperatorNamespace
 				}),
 			),

@@ -177,6 +177,7 @@ func install(ctx context.Context, cfg *action.Configuration, chrt *chart.Chart, 
 	act := action.NewInstall(cfg)
 	act.ReleaseName = releaseName
 	act.Namespace = releaseNamespace
+	act.CreateNamespace = true
 	act.Wait = false
 	if _, err := act.RunWithContext(ctx, chrt, values); err != nil {
 		return fmt.Errorf("installing gpu-operator: %w", err)
