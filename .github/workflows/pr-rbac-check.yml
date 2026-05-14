@@ -1,0 +1,24 @@
+name: RBAC Coverage Check
+
+on:
+  pull_request:
+    paths:
+      - 'internal/chart/gpu-operator/**' # someone bumped the chart .tgz
+      - 'internal/chart/rbac_test.go' # someone changed the allowlist
+      - 'internal/controller/gpu_controller.go' # someone changed the RBAC markers
+      - 'config/rbac/role.yaml' # someone manually edited the generated role
+
+jobs:
+  rbac-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Verify RBAC coverage
+        run: make test-rbac

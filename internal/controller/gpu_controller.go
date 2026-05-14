@@ -51,13 +51,42 @@ type GpuReconciler struct {
 	Installer helm.Installer
 }
 
+// RBAC design note
+//
+// Permissions are scoped to exactly what the operator's reconciliation logic and the
+// embedded NVIDIA GPU Operator Helm chart require. A wildcard grant (*/*) is intentionally
+// avoided - see internal/chart/rbac_test.go (TestChartResourcesCoveredByRBAC) which fails
+// CI if the chart produces a resource type not covered by these markers.
+//
+// The rbac.authorization.k8s.io grant (clusterroles, clusterrolebindings, roles, rolebindings)
+// is a necessary consequence of using the Helm SDK: the NVIDIA GPU Operator chart creates
+// ServiceAccounts and RBAC for its own components (gpu-operator, NFD, device-plugin, etc.)
+// and Helm must apply those during install and upgrade. Without this grant, Helm fails with
+// a 403 when applying chart resources.
+//
+// The escalate and bind verbs are intentionally omitted. Kubernetes RBAC performs escalation
+// checks during authorization, preventing creation of roles with permissions beyond the
+// caller's effective permissions - even with create/update on RBAC resources. This is a
+// mitigation, not a guarantee: it applies within standard RBAC authorization checks and
+// does not substitute for keeping the permissions listed here minimal.
+// See: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-escalation-prevention-and-bootstrapping
+
 // +kubebuilder:rbac:groups=gpu.kyma-project.io,resources=gpus,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=gpu.kyma-project.io,resources=gpus/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=gpu.kyma-project.io,resources=gpus/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="*",resources="*",verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=serviceaccounts;configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments;daemonsets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings;roles;rolebindings,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=nvidia.com,resources=clusterpolicies;nvidiadrivers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=nfd.k8s-sigs.io,resources=nodefeaturerules,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=policy,resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=podmonitors,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=get;list;watch;create;update;patch;delete
 
 func (r *GpuReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	gpu := &gpuv1beta1.Gpu{}
