@@ -134,8 +134,8 @@ func TestChartResourcesCoveredByRBAC(t *testing.T) {
 		t.Error("add missing entries to grantedByRBAC in rbac_test.go and kubebuilder:rbac markers in gpu_controller.go, then run: make manifests")
 	}
 
-	// Warn about RBAC entries the chart no longer uses - not failures, but signal
-	// stale permissions after a chart version bump.
+	// Fail on RBAC entries the chart no longer produces - stale permissions accumulate
+	// silently after chart version bumps if not caught here.
 	var stale []chartGVK
 	for gvk := range grantedByRBAC {
 		if !found[gvk] {
@@ -158,8 +158,8 @@ func TestChartResourcesCoveredByRBAC(t *testing.T) {
 		all = append(all, gvk)
 	}
 	sort.Slice(all, func(i, j int) bool { return all[i].String() < all[j].String() })
-	t.Logf("chart produces %d resource type(s), %d covered, %d uncovered:",
-		len(found), len(found)-len(uncovered), len(uncovered))
+	t.Logf("chart produces %d resource type(s): %d covered, %d uncovered, %d stale:",
+		len(found), len(found)-len(uncovered), len(uncovered), len(stale))
 	for _, gvk := range all {
 		t.Logf("  %s", gvk)
 	}
@@ -180,8 +180,16 @@ func collectGVKs(chrt *helmchart.Chart, found map[chartGVK]bool) {
 
 // extractGVKs parses raw YAML (possibly with Go template directives) and extracts
 // apiVersion/kind pairs. Template expressions like {{ .Values.x }} are skipped.
+//
+// Splitting on "---" (with optional surrounding newlines) handles both file-start
+// separators (--- at byte 0) and mid-file separators (\n---\n), preventing
+// cross-document apiVersion/kind mismatches from multi-resource template files.
 func extractGVKs(data []byte, found map[chartGVK]bool) {
-	for _, doc := range bytes.Split(data, []byte("\n---")) {
+	// Normalize line endings and split on YAML document boundaries.
+	// bytes.Split on "\n---" misses a leading "---" at byte 0, so we strip a
+	// leading "---\n" before splitting to handle both cases uniformly.
+	trimmed := bytes.TrimPrefix(data, []byte("---\n"))
+	for _, doc := range bytes.Split(trimmed, []byte("\n---")) {
 		av := reAPIVersion.FindSubmatch(doc)
 		k := reKind.FindSubmatch(doc)
 		if av == nil || k == nil {
