@@ -153,7 +153,7 @@ func TestChartResourcesCoveredByRBAC(t *testing.T) {
 	}
 
 	// Log full resource inventory for audit visibility.
-	var all []chartGVK
+	all := make([]chartGVK, 0, len(found))
 	for gvk := range found {
 		all = append(all, gvk)
 	}
@@ -189,7 +189,7 @@ func extractGVKs(data []byte, found map[chartGVK]bool) {
 	// bytes.Split on "\n---" misses a leading "---" at byte 0, so we strip a
 	// leading "---\n" before splitting to handle both cases uniformly.
 	trimmed := bytes.TrimPrefix(data, []byte("---\n"))
-	for _, doc := range bytes.Split(trimmed, []byte("\n---")) {
+	for doc := range bytes.SplitSeq(trimmed, []byte("\n---")) {
 		av := reAPIVersion.FindSubmatch(doc)
 		k := reKind.FindSubmatch(doc)
 		if av == nil || k == nil {
