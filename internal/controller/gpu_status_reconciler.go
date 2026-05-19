@@ -92,30 +92,26 @@ func (r *GpuStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	driverStatus, driverReason, driverMsg, driverInfo := r.checkDriverDaemonSet(ctx)
 	validatorStatus, validatorReason, validatorMsg := r.checkClusterPolicy(ctx)
 
-	if conditionMatches(gpu.Status.Conditions, condDriverReady, driverStatus, driverReason, driverMsg) &&
-		conditionMatches(gpu.Status.Conditions, condValidatorPassed, validatorStatus, validatorReason, validatorMsg) &&
-		driverStatusMatches(gpu.Status.Driver, driverInfo) {
-		return ctrl.Result{RequeueAfter: requeueWarn}, nil
-	}
-
-	// Re-read the CR immediately before patching so that Ready is computed from
-	// the latest conditions written by GpuReconciler (Preflight, HelmInstalled),
-	// not from the potentially-stale cache snapshot we loaded at reconcile start.
+	// Re-read before the no-op check and the apply so Ready is computed from
+	// the freshest Preflight/HelmInstalled written by GpuReconciler.
 	live := &gpuv1beta1.Gpu{}
 	if err := r.Get(ctx, req.NamespacedName, live); err != nil {
 		return ctrl.Result{}, fmt.Errorf("re-fetching Gpu CR before status apply: %w", err)
 	}
 
-	// Build the full conditions picture from live state + our new observations.
-	// apimeta.SetStatusCondition preserves LastTransitionTime when status is unchanged
-	// and sets it to Now() on transitions - this is the correct semantics for conditions.
+	if conditionMatches(live.Status.Conditions, condDriverReady, driverStatus, driverReason, driverMsg) &&
+		conditionMatches(live.Status.Conditions, condValidatorPassed, validatorStatus, validatorReason, validatorMsg) &&
+		driverStatusMatches(live.Status.Driver, driverInfo) {
+		return ctrl.Result{RequeueAfter: requeueWarn}, nil
+	}
+
+	// Build conditions from live state and send only owned types via SSA.
 	merged := append([]metav1.Condition(nil), live.Status.Conditions...)
 	setCondition(&merged, condDriverReady, driverStatus, driverReason, driverMsg, live.Generation)
 	setCondition(&merged, condValidatorPassed, validatorStatus, validatorReason, validatorMsg, live.Generation)
 	apimeta.SetStatusCondition(&merged, computeReadySummary(merged, live.Generation))
 
-	// Extract only the conditions this controller owns for the SSA patch.
-	// The API server merges these with Preflight/HelmInstalled owned by "gpu-controller".
+	// Extract only owned conditions; API server merges with gpu-controller's fields.
 	ownedTypes := []string{condDriverReady, condValidatorPassed, condReady}
 	ownedConditions := make([]metav1.Condition, 0, len(ownedTypes))
 	for _, t := range ownedTypes {
@@ -124,9 +120,7 @@ func (r *GpuStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	// Apply only the fields owned by this controller via the non-deprecated SSA path
-	// (Status().Apply with unstructured). The API server merges these with fields
-	// owned by "gpu-controller" (Preflight, HelmInstalled) atomically.
+	// Apply only the fields owned by this controller via the non-deprecated SSA path.
 	ownedCondUnstructured := make([]any, 0, len(ownedConditions))
 	for _, c := range ownedConditions {
 		ownedCondUnstructured = append(ownedCondUnstructured, conditionToUnstructured(c))

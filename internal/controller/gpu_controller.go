@@ -222,55 +222,44 @@ func (r *GpuReconciler) reconcileDelete(ctx context.Context, gpu *gpuv1beta1.Gpu
 	return ctrl.Result{}, nil
 }
 
-// setPreflightCondition applies only the Preflight condition via Server-Side Apply.
-// Field owner "gpu-controller" owns Preflight and HelmInstalled; the API server
-// merges this patch with conditions owned by "gpu-status-controller" atomically,
-// eliminating the last-write-wins race that MergeFrom patches produce.
+// setPreflightCondition writes the Preflight condition via SSA under "gpu-controller".
 func (r *GpuReconciler) setPreflightCondition(ctx context.Context, gpu *gpuv1beta1.Gpu, status metav1.ConditionStatus, reason, message string) error {
 	return r.applyInstallStatus(ctx, gpu, metav1.Condition{
-		Type:               condPreflight,
-		Status:             status,
-		Reason:             reason,
-		Message:            message,
-		ObservedGeneration: gpu.Generation,
+		Type:    condPreflight,
+		Status:  status,
+		Reason:  reason,
+		Message: message,
 	}, "")
 }
 
-// setHelmCondition applies the HelmInstalled condition and optionally operatorVersion
-// via Server-Side Apply. See setPreflightCondition for the rationale.
+// setHelmCondition writes the HelmInstalled condition and optionally operatorVersion via SSA.
 func (r *GpuReconciler) setHelmCondition(ctx context.Context, gpu *gpuv1beta1.Gpu, status metav1.ConditionStatus, reason, message string, operatorVersion string) error {
 	return r.applyInstallStatus(ctx, gpu, metav1.Condition{
-		Type:               condHelmInstalled,
-		Status:             status,
-		Reason:             reason,
-		Message:            message,
-		ObservedGeneration: gpu.Generation,
+		Type:    condHelmInstalled,
+		Status:  status,
+		Reason:  reason,
+		Message: message,
 	}, operatorVersion)
 }
 
-// applyInstallStatus sends a Server-Side Apply for the fields owned by
-// "gpu-controller": the provided condition and, when non-empty, operatorVersion.
-// All conditions owned by this controller (Preflight, HelmInstalled) are included
-// in every apply so that a second apply for HelmInstalled does not drop the
-// previously written Preflight condition (SSA field manager ownership is per condition
-// entry, so omitting a condition causes it to be dropped).
-//
-// We use Status().Apply with an unstructured object (the non-deprecated SSA path
-// in controller-runtime v0.23.3+). A fresh Get before each apply ensures we
-// include all owned conditions written earlier in the same reconcile cycle.
+// applyInstallStatus writes the owned conditions (Preflight, HelmInstalled) and
+// optionally operatorVersion via SSA under "gpu-controller". Both owned conditions
+// are always included so SSA field manager ownership doesn't drop a previously
+// written condition when only the other one is being updated.
 func (r *GpuReconciler) applyInstallStatus(ctx context.Context, gpu *gpuv1beta1.Gpu, cond metav1.Condition, operatorVersion string) error {
-	// Re-read so conditions set earlier in this reconcile cycle are visible.
+	// Re-read so conditions set earlier in this reconcile cycle are included.
 	live := &gpuv1beta1.Gpu{}
 	if err := r.Get(ctx, types.NamespacedName{Name: gpu.Name}, live); err != nil {
 		return fmt.Errorf("re-fetching Gpu CR for status apply: %w", err)
 	}
 
-	// Preserve LastTransitionTime: apply new condition on the live conditions.
+	// ObservedGeneration set from live (not the caller snapshot) and
+	// LastTransitionTime preserved when status is unchanged.
+	cond.ObservedGeneration = live.Generation
 	conditions := append([]metav1.Condition(nil), live.Status.Conditions...)
 	apimeta.SetStatusCondition(&conditions, cond)
 
-	// Include all conditions this controller owns so SSA field manager ownership
-	// is consistent across reconcile cycles (omitting one would remove it).
+	// Include all owned conditions in every apply — omitting one removes it.
 	ownedTypes := []string{condPreflight, condHelmInstalled}
 	ownedConditions := make([]any, 0, len(ownedTypes))
 	for _, t := range ownedTypes {
@@ -316,7 +305,7 @@ func conditionToUnstructured(c metav1.Condition) map[string]any {
 		"status":             string(c.Status),
 		"reason":             c.Reason,
 		"message":            c.Message,
-		"lastTransitionTime": c.LastTransitionTime.UTC().Format("2006-01-02T15:04:05Z"),
+		"lastTransitionTime": c.LastTransitionTime.UTC().Format(time.RFC3339),
 		"observedGeneration": c.ObservedGeneration,
 	}
 	return m

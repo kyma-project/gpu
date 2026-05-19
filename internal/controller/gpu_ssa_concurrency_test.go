@@ -32,7 +32,6 @@ import (
 	gpuv1beta1 "github.com/kyma-project/gpu/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("SSA concurrency", func() {
@@ -285,13 +284,18 @@ var _ = Describe("SSA concurrency", func() {
 	})
 })
 
-// setPreflightFalse patches the Gpu status to simulate a failed preflight (e.g. non-Garden-Linux node).
+// setPreflightFalse seeds Preflight=False via SSA under the install field owner.
 func setPreflightFalse(gpuName string) {
 	GinkgoHelper()
 	gpu := &gpuv1beta1.Gpu{}
 	Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
-	patch := gpu.DeepCopy()
-	setCondition(&gpu.Status.Conditions, condPreflight, metav1.ConditionFalse, reasonFailed,
-		"GPU node is not running Garden Linux", gpu.Generation)
-	Expect(k8sClient.Status().Patch(ctx, gpu, client.MergeFrom(patch))).To(Succeed())
+	cond := metav1.Condition{
+		Type:               condPreflight,
+		Status:             metav1.ConditionFalse,
+		Reason:             reasonFailed,
+		Message:            "GPU node is not running Garden Linux",
+		ObservedGeneration: gpu.Generation,
+		LastTransitionTime: metav1.Now(),
+	}
+	applyConditionSSA(gpuName, cond, fieldOwnerInstall)
 }
