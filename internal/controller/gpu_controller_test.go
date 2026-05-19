@@ -181,6 +181,12 @@ var _ = Describe("GpuReconciler", func() {
 			_, err := reconciler.Reconcile(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
 
+			// GpuReconciler sets Preflight=True and HelmInstalled=True.
+			// Ready is owned by GpuStatusReconciler - run it to compute the summary.
+			statusReconciler := &GpuStatusReconciler{Client: k8sClient}
+			_, err = statusReconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+
 			readyCond := getCondition(gpuName, condReady)
 			Expect(readyCond).NotTo(BeNil())
 			// HelmInstalled=True but DriverReady/ValidatorPassed not yet set -> Unknown
@@ -263,6 +269,27 @@ var _ = Describe("GpuReconciler", func() {
 
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
 			Expect(gpu.Status.OperatorVersion).To(Equal(versionAfterFirst))
+		})
+
+		It("preserves operatorVersion when preflight re-runs after a node change", func() {
+			By("initial install sets operatorVersion")
+			_, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+
+			gpu := &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(gpu.Status.OperatorVersion).NotTo(BeEmpty())
+			savedVersion := gpu.Status.OperatorVersion
+
+			By("a new GPU node joins, triggering another reconcile (preflight fires before HelmInstalled)")
+			newGpuNode("gpu-node-idem2", "g4dn.xlarge", "Garden Linux 1312.3")
+			DeferCleanup(deleteNode, "gpu-node-idem2")
+			_, err = reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("operatorVersion must still be set - setPreflightCondition must not wipe it")
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(gpu.Status.OperatorVersion).To(Equal(savedVersion))
 		})
 	})
 })
