@@ -297,5 +297,5 @@ func setPreflightFalse(gpuName string) {
 		ObservedGeneration: gpu.Generation,
 		LastTransitionTime: metav1.Now(),
 	}
-	applyConditionSSA(gpuName, cond, fieldOwnerInstall)
+	applyConditionSSA(gpuName, cond)
 }

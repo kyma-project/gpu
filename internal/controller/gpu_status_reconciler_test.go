@@ -287,7 +287,7 @@ func setHelmInstalledTrue(gpuName string) { //nolint:unparam
 		ObservedGeneration: gpu.Generation,
 		LastTransitionTime: metav1.Now(),
 	}
-	applyConditionSSA(gpuName, cond, fieldOwnerInstall)
+	applyConditionSSA(gpuName, cond)
 }
 
 func setHelmInstalledFalse(gpuName string) {
@@ -301,7 +301,7 @@ func setHelmInstalledFalse(gpuName string) {
 		ObservedGeneration: gpu.Generation,
 		LastTransitionTime: metav1.Now(),
 	}
-	applyConditionSSA(gpuName, cond, fieldOwnerInstall)
+	applyConditionSSA(gpuName, cond)
 }
 
 func setPreflightTrue(gpuName string) {
@@ -315,12 +315,12 @@ func setPreflightTrue(gpuName string) {
 		ObservedGeneration: gpu.Generation,
 		LastTransitionTime: metav1.Now(),
 	}
-	applyConditionSSA(gpuName, cond, fieldOwnerInstall)
+	applyConditionSSA(gpuName, cond)
 }
 
-// applyConditionSSA writes a condition via SSA, including all other conditions
-// owned by the same field manager so ForceOwnership doesn't drop them.
-func applyConditionSSA(gpuName string, cond metav1.Condition, fieldOwner string) {
+// applyConditionSSA writes a condition via SSA under "gpu-controller", including all
+// other install-owned conditions so ForceOwnership doesn't drop them.
+func applyConditionSSA(gpuName string, cond metav1.Condition) {
 	GinkgoHelper()
 
 	gpu := &gpuv1beta1.Gpu{}
@@ -330,20 +330,8 @@ func applyConditionSSA(gpuName string, cond metav1.Condition, fieldOwner string)
 	conditions := append([]metav1.Condition(nil), gpu.Status.Conditions...)
 	apimeta.SetStatusCondition(&conditions, cond)
 
-	// Determine which condition types this field owner manages so we don't drop
-	// conditions it already owns when we re-apply.
-	var ownedTypes []string
-	switch fieldOwner {
-	case fieldOwnerInstall:
-		ownedTypes = []string{condPreflight, condHelmInstalled}
-	case fieldOwnerStatus:
-		ownedTypes = []string{condDriverReady, condValidatorPassed, condReady}
-	default:
-		ownedTypes = []string{cond.Type}
-	}
-
-	ownedConds := make([]any, 0, len(ownedTypes))
-	for _, t := range ownedTypes {
+	ownedConds := make([]any, 0, 2)
+	for _, t := range []string{condPreflight, condHelmInstalled} {
 		if c := apimeta.FindStatusCondition(conditions, t); c != nil {
 			ownedConds = append(ownedConds, conditionToUnstructured(*c))
 		}
@@ -358,7 +346,7 @@ func applyConditionSSA(gpuName string, cond metav1.Condition, fieldOwner string)
 		},
 	}
 	Expect(k8sClient.Status().Apply(ctx, client.ApplyConfigurationFromUnstructured(u),
-		client.FieldOwner(fieldOwner),
+		client.FieldOwner(fieldOwnerInstall),
 		client.ForceOwnership,
 	)).To(Succeed())
 }
