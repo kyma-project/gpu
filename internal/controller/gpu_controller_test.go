@@ -275,6 +275,34 @@ var _ = Describe("GpuReconciler", func() {
 			Expect(gpu.Status.Driver).NotTo(BeNil())
 			Expect(gpu.Status.Driver.NodesReady).To(Equal(int32(2)))
 		})
+
+		It("clears stale driver fields when the DaemonSet disappears", func() {
+			By("first reconcile populates driver.nodesReady from a healthy DS")
+			createDriverDaemonSet(3, 3, 3, 3)
+			_, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+
+			gpu := &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(gpu.Status.Driver).NotTo(BeNil())
+			Expect(gpu.Status.Driver.NodesReady).To(Equal(int32(3)))
+
+			By("DaemonSet is removed (e.g. mid-reinstall)")
+			deleteAllDriverDaemonSets(gpuOperatorNamespace)
+
+			By("next reconcile must clear stale nodesReady/version")
+			_, err = reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(gpu.Status.Driver).NotTo(BeNil())
+			Expect(gpu.Status.Driver.NodesReady).To(BeZero(),
+				"stale nodesReady from prior healthy read must be cleared when DS disappears")
+			Expect(gpu.Status.Driver.Version).To(BeEmpty())
+
+			cond := getCondition(gpuName, condDriverReady)
+			Expect(cond.Status).To(Equal(metav1.ConditionUnknown))
+		})
 	})
 
 	Describe("ClusterPolicy", func() {

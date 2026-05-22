@@ -372,10 +372,11 @@ func (r *GpuReconciler) checkDriverDaemonSet(ctx context.Context) (metav1.Condit
 		client.InNamespace(gpuOperatorNamespace),
 		client.MatchingLabels{"app": driverAppLabel},
 	); err != nil {
-		return metav1.ConditionFalse, reasonReadError, fmt.Sprintf("error listing driver DaemonSets: %v", err), nil
+		// Return an empty (not nil) DriverStatus so applyStatus clears stale nodesReady/version from a previous successful read.
+		return metav1.ConditionFalse, reasonReadError, fmt.Sprintf("error listing driver DaemonSets: %v", err), &gpuv1beta1.DriverStatus{}
 	}
 	if len(dsList.Items) == 0 {
-		return metav1.ConditionUnknown, reasonWaiting, "nvidia-driver-daemonset not found; driver installation may still be in progress", nil
+		return metav1.ConditionUnknown, reasonWaiting, "nvidia-driver-daemonset not found; driver installation may still be in progress", &gpuv1beta1.DriverStatus{}
 	}
 
 	var totalDesired, totalReady, totalAvailable, totalUpdated int32
