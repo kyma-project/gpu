@@ -150,7 +150,7 @@ func reconcileRequest(name string) reconcile.Request {
 
 // getCondition is a test helper that loads the Gpu CR and returns the named condition,
 // or nil if it doesn't exist yet.
-func getCondition(name, condType string) *metav1.Condition {
+func getCondition(name, condType string) *metav1.Condition { //nolint:unparam
 	gpu := &gpuv1beta1.Gpu{}
 	if err := k8sClient.Get(ctx, types.NamespacedName{Name: name}, gpu); err != nil {
 		return nil

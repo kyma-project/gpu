@@ -38,7 +38,7 @@ const (
 	reasonReadError    = "ReadError"    // Kubernetes API read failed
 )
 
-// computeReadySummary derives the Ready summary condition from the four managed conditions.
+// computeReadySummary derives the Ready summary condition from the four managed inputs.
 // Priority: any False beats any Unknown beats all True.
 // The reason and message are taken from the first condition that determines the outcome,
 // in dependency order (Preflight -> HelmInstalled -> DriverReady -> ValidatorPassed).
@@ -87,26 +87,4 @@ func computeReadySummary(conditions []metav1.Condition, generation int64) metav1
 		Message:            "GPU Operator is fully operational",
 		ObservedGeneration: generation,
 	}
-}
-
-// setCondition writes a condition entry, passing status, reason, and message directly so
-// callers retain full control over the tri-state (True / False / Unknown).
-func setCondition(conditions *[]metav1.Condition, condType string, status metav1.ConditionStatus, reason, message string, generation int64) {
-	apimeta.SetStatusCondition(conditions, metav1.Condition{
-		Type:               condType,
-		Status:             status,
-		Reason:             reason,
-		Message:            message,
-		ObservedGeneration: generation,
-	})
-}
-
-// conditionMatches returns true when the named condition already carries the given status, reason, and message.
-// Used to skip a no-op status patch when nothing changed.
-func conditionMatches(conditions []metav1.Condition, condType string, status metav1.ConditionStatus, reason, message string) bool {
-	c := apimeta.FindStatusCondition(conditions, condType)
-	if c == nil {
-		return false
-	}
-	return c.Status == status && c.Reason == reason && c.Message == message
 }

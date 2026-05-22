@@ -17,13 +17,17 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -42,13 +46,22 @@ import (
 )
 
 const (
-	requeueWarn       = 30 * time.Second
-	finalizer         = "gpu.kyma-project.io/gpu-operator"
-	fieldOwnerInstall = "gpu-controller"
-	fieldOwnerStatus  = "gpu-status-controller"
+	requeueWarn          = 30 * time.Second
+	finalizer            = "gpu.kyma-project.io/gpu-operator"
+	gpuOperatorNamespace = "gpu-operator"
+	driverAppLabel       = "nvidia-driver-daemonset"
+	clusterPolicyName    = "cluster-policy"
 )
 
-// GpuReconciler reconciles a Gpu object.
+var clusterPolicyGVK = schema.GroupVersionKind{
+	Group:   "nvidia.com",
+	Version: "v1",
+	Kind:    "ClusterPolicy",
+}
+
+// GpuReconciler reconciles a Gpu object. It owns the full lifecycle: install/upgrade
+// of the embedded NVIDIA GPU Operator chart, deletion, and observation of NVIDIA
+// resources (driver DaemonSet, ClusterPolicy) to maintain status conditions.
 type GpuReconciler struct {
 	client.Client
 	Installer helm.Installer
@@ -91,7 +104,21 @@ type GpuReconciler struct {
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=podmonitors,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=get;list;watch;create;update;patch;delete
 
+// Reconcile drives a single sync cycle for a Gpu CR.
+//
+// Flow (happy path):
+//  1. Add finalizer if missing (return; the resulting watch event re-triggers).
+//  2. Pre-flight check (Garden Linux on every GPU node).
+//  3. Helm install or upgrade of the embedded NVIDIA GPU Operator chart.
+//  4. Read driver DaemonSet -> DriverReady condition.
+//  5. Read ClusterPolicy -> ValidatorPassed condition.
+//  6. Compute Ready summary and apply all owned status fields via Server-Side Apply.
+//
+// Each early exit (preflight Warn/Error, helm failure) writes the conditions known
+// at that point and returns; status checks only run once Helm has succeeded.
 func (r *GpuReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
 	gpu := &gpuv1beta1.Gpu{}
 	if err := r.Get(ctx, req.NamespacedName, gpu); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -104,12 +131,6 @@ func (r *GpuReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return r.reconcileDelete(ctx, gpu)
 	}
 
-	return r.reconcileNormal(ctx, gpu)
-}
-
-func (r *GpuReconciler) reconcileNormal(ctx context.Context, gpu *gpuv1beta1.Gpu) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
-
 	if !controllerutil.ContainsFinalizer(gpu, finalizer) {
 		controllerutil.AddFinalizer(gpu, finalizer)
 		if err := r.Update(ctx, gpu); err != nil {
@@ -119,74 +140,136 @@ func (r *GpuReconciler) reconcileNormal(ctx context.Context, gpu *gpuv1beta1.Gpu
 		return ctrl.Result{}, nil
 	}
 
-	// 1. pre-flight
-	pre, err := detection.RunPreflight(ctx, r.Client)
+	// 1. preflight
+	preflightCond, result, err := r.runPreflight(ctx, gpu)
+	if err != nil || preflightCond == nil {
+		return result, err
+	}
 
+	// 2. helm install or upgrade
+	helmCond, chartVersion, err := r.installOrUpgrade(ctx, gpu, preflightCond)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("running preflight: %w", err)
+		return ctrl.Result{}, err
+	}
+
+	// 3. check driver DaemonSet -> set DriverReady condition
+	driverStatus, driverReason, driverMsg, driverInfo := r.checkDriverDaemonSet(ctx)
+	driverCond := metav1.Condition{Type: condDriverReady, Status: driverStatus, Reason: driverReason, Message: driverMsg}
+
+	// 4. check ClusterPolicy -> set ValidatorPassed condition
+	validatorStatus, validatorReason, validatorMsg := r.checkClusterPolicy(ctx)
+	validatorCond := metav1.Condition{Type: condValidatorPassed, Status: validatorStatus, Reason: validatorReason, Message: validatorMsg}
+
+	// 5. apply all conditions + Ready summary + observed fields
+	if err := r.applyStatus(ctx, gpu.Name, statusUpdate{
+		conditions:      []metav1.Condition{*preflightCond, helmCond, driverCond, validatorCond},
+		includeReady:    true,
+		operatorVersion: chartVersion,
+		driver:          driverInfo,
+	}); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	logger.Info("reconciled",
+		"chartVersion", chartVersion,
+		"driverReady", driverStatus,
+		"validatorPassed", validatorStatus,
+	)
+	// Polling safety net: ClusterPolicy CRD is not watched (installed by Helm),
+	// so a periodic requeue is needed to pick up state transitions there.
+	return ctrl.Result{RequeueAfter: requeueWarn}, nil
+}
+
+// runPreflight evaluates the cluster's GPU-node OS state and returns the resulting
+// Preflight condition along with reconcile control flow.
+//
+// On Proceed it returns the True condition and zero result/err - the caller continues
+// with installation. On Warn or Error it writes the appropriate condition itself and
+// returns nil for the condition, signalling the caller to return the supplied result/err.
+func (r *GpuReconciler) runPreflight(ctx context.Context, gpu *gpuv1beta1.Gpu) (*metav1.Condition, ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
+	pre, err := detection.RunPreflight(ctx, r.Client)
+	if err != nil {
+		return nil, ctrl.Result{}, fmt.Errorf("running preflight: %w", err)
 	}
 
 	switch pre.Outcome {
 	case detection.OutcomeWarn:
 		logger.Info("preflight warning, requeueing", "reason", pre.Reason)
-		if err := r.setPreflightCondition(ctx, gpu, metav1.ConditionUnknown, reasonWaiting, pre.Reason); err != nil {
-			return ctrl.Result{}, err
+		if err := r.applyStatus(ctx, gpu.Name, statusUpdate{
+			conditions: []metav1.Condition{
+				{Type: condPreflight, Status: metav1.ConditionUnknown, Reason: reasonWaiting, Message: pre.Reason},
+			},
+		}); err != nil {
+			return nil, ctrl.Result{}, err
 		}
-		return ctrl.Result{RequeueAfter: requeueWarn}, nil
+		return nil, ctrl.Result{RequeueAfter: requeueWarn}, nil
 
 	case detection.OutcomeError:
 		// Hard blocker (e.g. non-Garden-Linux GPU nodes) - stop until user resolves it.
 		// No automatic requeue; the next reconcile is triggered by a CR or node change.
 		logger.Info("preflight error, stopping", "reason", pre.Reason)
-		if err := r.setPreflightCondition(ctx, gpu, metav1.ConditionFalse, reasonFailed, pre.Reason); err != nil {
-			return ctrl.Result{}, err
+		if err := r.applyStatus(ctx, gpu.Name, statusUpdate{
+			conditions: []metav1.Condition{
+				{Type: condPreflight, Status: metav1.ConditionFalse, Reason: reasonFailed, Message: pre.Reason},
+			},
+		}); err != nil {
+			return nil, ctrl.Result{}, err
 		}
-		return ctrl.Result{}, nil
-
-	default: // OutcomeProceed
+		return nil, ctrl.Result{}, nil
 	}
 
-	// OutcomeProceed: all GPU nodes exist and run Garden Linux.
-	// Helm outcome owns subsequent state transitions.
-	if err := r.setPreflightCondition(ctx, gpu, metav1.ConditionTrue, reasonPassed, "all GPU nodes are running Garden Linux"); err != nil {
-		return ctrl.Result{}, err
-	}
+	return &metav1.Condition{
+		Type:    condPreflight,
+		Status:  metav1.ConditionTrue,
+		Reason:  reasonPassed,
+		Message: "all GPU nodes are running Garden Linux",
+	}, ctrl.Result{}, nil
+}
 
-	// 2. build values - preflight guarantees Garden Linux, so always true here
+// installOrUpgrade loads the embedded chart, builds values from the Gpu spec, and
+// drives Helm. On failure it writes Preflight + HelmInstalled=False itself (so callers
+// don't need to) and returns a wrapped error. On success it returns the
+// HelmInstalled=True condition along with the chart version.
+func (r *GpuReconciler) installOrUpgrade(ctx context.Context, gpu *gpuv1beta1.Gpu, preflightCond *metav1.Condition) (metav1.Condition, string, error) {
+	logger := log.FromContext(ctx)
+
+	// Preflight guarantees Garden Linux, so always true here.
 	chartData, err := chart.GPUOperatorChart()
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("loading embedded chart: %w", err)
+		return metav1.Condition{}, "", fmt.Errorf("loading embedded chart: %w", err)
 	}
 
 	values, err := helm.BuildValues(gpu.Spec, helm.ClusterInfo{GardenLinux: true})
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("building helm values: %w", err)
+		return metav1.Condition{}, "", fmt.Errorf("building helm values: %w", err)
 	}
 
-	// 3. install or upgrade
 	if err := r.Installer.InstallOrUpgrade(ctx, chartData, values); err != nil {
-		if statusErr := r.setHelmCondition(ctx, gpu, metav1.ConditionFalse, reasonFailed, err.Error(), ""); statusErr != nil {
+		statusErr := r.applyStatus(ctx, gpu.Name, statusUpdate{
+			conditions: []metav1.Condition{
+				*preflightCond,
+				{Type: condHelmInstalled, Status: metav1.ConditionFalse, Reason: reasonFailed, Message: err.Error()},
+			},
+		})
+		if statusErr != nil {
 			logger.Error(statusErr, "failed to update status after Helm error")
 		}
-		return ctrl.Result{}, fmt.Errorf("helm install/upgrade: %w", err)
+		return metav1.Condition{}, "", fmt.Errorf("helm install/upgrade: %w", err)
 	}
 
 	chartVersion, err := chart.GPUOperatorChartVersion()
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("reading chart version: %w", err)
+		return metav1.Condition{}, "", fmt.Errorf("reading chart version: %w", err)
 	}
 
-	// HelmInstalled=True records that Helm successfully applied the manifests.
-	// Ready remains Unknown until DriverReady and ValidatorPassed are confirmed by the status reconciler.
-	if err := r.setHelmCondition(ctx, gpu, metav1.ConditionTrue, reasonInstalled,
-		fmt.Sprintf("GPU Operator %s installed successfully", chartVersion),
-		chartVersion,
-	); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	logger.Info("GPU Operator reconciled, waiting for pods to become ready", "chartVersion", chartVersion)
-	return ctrl.Result{}, nil
+	return metav1.Condition{
+		Type:    condHelmInstalled,
+		Status:  metav1.ConditionTrue,
+		Reason:  reasonInstalled,
+		Message: fmt.Sprintf("GPU Operator %s installed successfully", chartVersion),
+	}, chartVersion, nil
 }
 
 func (r *GpuReconciler) reconcileDelete(ctx context.Context, gpu *gpuv1beta1.Gpu) (ctrl.Result, error) {
@@ -199,9 +282,12 @@ func (r *GpuReconciler) reconcileDelete(ctx context.Context, gpu *gpuv1beta1.Gpu
 	logger.Info("Gpu CR deleted, uninstalling GPU Operator")
 
 	// Best-effort status update - do not block deletion if this fails.
-	// The critical path is Uninstall and finalizer removal; status is cosmetic here.
 	// Unknown = in-progress; the uninstall outcome has not yet been determined.
-	if err := r.setHelmCondition(ctx, gpu, metav1.ConditionUnknown, reasonUninstalling, "uninstalling GPU Operator", ""); err != nil {
+	if err := r.applyStatus(ctx, gpu.Name, statusUpdate{
+		conditions: []metav1.Condition{
+			{Type: condHelmInstalled, Status: metav1.ConditionUnknown, Reason: reasonUninstalling, Message: "uninstalling GPU Operator"},
+		},
+	}); err != nil {
 		logger.Error(err, "failed to update status before uninstall, continuing")
 	}
 
@@ -222,117 +308,179 @@ func (r *GpuReconciler) reconcileDelete(ctx context.Context, gpu *gpuv1beta1.Gpu
 	return ctrl.Result{}, nil
 }
 
-// setPreflightCondition writes the Preflight condition via SSA under "gpu-controller".
-func (r *GpuReconciler) setPreflightCondition(ctx context.Context, gpu *gpuv1beta1.Gpu, status metav1.ConditionStatus, reason, message string) error {
-	return r.applyInstallStatus(ctx, gpu, metav1.Condition{
-		Type:    condPreflight,
-		Status:  status,
-		Reason:  reason,
-		Message: message,
-	}, "")
+// statusUpdate carries the partial status the reconciler wants to write in this cycle.
+// Only the conditions listed here are applied; absent ones are left untouched on the
+// live object. operatorVersion and driver are applied only when non-zero / non-nil.
+type statusUpdate struct {
+	conditions      []metav1.Condition
+	includeReady    bool
+	operatorVersion string
+	driver          *gpuv1beta1.DriverStatus
 }
 
-// setHelmCondition writes the HelmInstalled condition and optionally operatorVersion via SSA.
-func (r *GpuReconciler) setHelmCondition(ctx context.Context, gpu *gpuv1beta1.Gpu, status metav1.ConditionStatus, reason, message string, operatorVersion string) error {
-	return r.applyInstallStatus(ctx, gpu, metav1.Condition{
-		Type:    condHelmInstalled,
-		Status:  status,
-		Reason:  reason,
-		Message: message,
-	}, operatorVersion)
-}
-
-// applyInstallStatus writes the owned conditions (Preflight, HelmInstalled) and
-// optionally operatorVersion via SSA under "gpu-controller". Both owned conditions
-// are always included so SSA field manager ownership doesn't drop a previously
-// written condition when only the other one is being updated.
-func (r *GpuReconciler) applyInstallStatus(ctx context.Context, gpu *gpuv1beta1.Gpu, cond metav1.Condition, operatorVersion string) error {
-	// Re-read so conditions set earlier in this reconcile cycle are included.
+// applyStatus merges the requested updates into the live status and writes them via
+// a strategic-merge patch. It re-reads the CR so SetStatusCondition can preserve
+// LastTransitionTime, computes the Ready summary when requested, and returns without
+// issuing the patch when the resulting status equals what's already stored.
+//
+// Single-writer assumption: this controller owns every field in .status. If a second
+// controller is ever introduced that writes a different subset of .status, switch
+// this method to Server-Side Apply with a FieldOwner so the two writers don't clobber
+// each other's fields.
+func (r *GpuReconciler) applyStatus(ctx context.Context, name string, upd statusUpdate) error {
 	live := &gpuv1beta1.Gpu{}
-	if err := r.Get(ctx, types.NamespacedName{Name: gpu.Name}, live); err != nil {
-		return fmt.Errorf("re-fetching Gpu CR for status apply: %w", err)
+	if err := r.Get(ctx, types.NamespacedName{Name: name}, live); err != nil {
+		return fmt.Errorf("re-fetching Gpu CR for status update: %w", err)
+	}
+	original := live.DeepCopy()
+
+	for _, c := range upd.conditions {
+		c.ObservedGeneration = live.Generation
+		apimeta.SetStatusCondition(&live.Status.Conditions, c)
+	}
+	if upd.includeReady {
+		apimeta.SetStatusCondition(&live.Status.Conditions, computeReadySummary(live.Status.Conditions, live.Generation))
+	}
+	if upd.operatorVersion != "" {
+		live.Status.OperatorVersion = upd.operatorVersion
+	}
+	if upd.driver != nil {
+		live.Status.Driver = upd.driver
 	}
 
-	// ObservedGeneration set from live (not the caller snapshot) and
-	// LastTransitionTime preserved when status is unchanged.
-	cond.ObservedGeneration = live.Generation
-	conditions := append([]metav1.Condition(nil), live.Status.Conditions...)
-	apimeta.SetStatusCondition(&conditions, cond)
-
-	// Include all owned conditions in every apply — omitting one removes it.
-	ownedTypes := []string{condPreflight, condHelmInstalled}
-	ownedConditions := make([]any, 0, len(ownedTypes))
-	for _, t := range ownedTypes {
-		if c := apimeta.FindStatusCondition(conditions, t); c != nil {
-			ownedConditions = append(ownedConditions, conditionToUnstructured(*c))
-		}
+	if equality.Semantic.DeepEqual(original.Status, live.Status) {
+		return nil
 	}
 
-	effectiveVersion := operatorVersion
-	if effectiveVersion == "" {
-		effectiveVersion = live.Status.OperatorVersion
-	}
-
-	statusObj := map[string]any{
-		"conditions": ownedConditions,
-	}
-	if effectiveVersion != "" {
-		statusObj["operatorVersion"] = effectiveVersion
-	}
-
-	u := &unstructured.Unstructured{
-		Object: map[string]any{
-			"apiVersion": "gpu.kyma-project.io/v1beta1",
-			"kind":       "Gpu",
-			"metadata":   map[string]any{"name": gpu.Name},
-			"status":     statusObj,
-		},
-	}
-	if err := r.Status().Apply(ctx, client.ApplyConfigurationFromUnstructured(u),
-		client.FieldOwner(fieldOwnerInstall),
-		client.ForceOwnership,
-	); err != nil {
-		return fmt.Errorf("applying %s condition: %w", cond.Type, err)
+	if err := r.Status().Patch(ctx, live, client.MergeFrom(original)); err != nil {
+		return fmt.Errorf("patching Gpu status: %w", err)
 	}
 	return nil
 }
 
-// conditionToUnstructured converts a metav1.Condition to the map[string]any form
-// expected by the unstructured SSA apply path.
-func conditionToUnstructured(c metav1.Condition) map[string]any {
-	m := map[string]any{
-		"type":               c.Type,
-		"status":             string(c.Status),
-		"reason":             c.Reason,
-		"message":            c.Message,
-		"lastTransitionTime": c.LastTransitionTime.UTC().Format(time.RFC3339),
-		"observedGeneration": c.ObservedGeneration,
+// checkDriverDaemonSet aggregates state across every nvidia-driver-daemonset in the
+// gpu-operator namespace. NVIDIA creates one DaemonSet per kernel version, so a cluster
+// with mixed kernels has multiple DaemonSets - DriverReady=True only when every node on
+// every kernel version has a ready driver.
+//
+// Unknown = DaemonSet not yet present or pods still rolling out.
+// False   = list error.
+// True    = all nodes ready, available, and updated across all driver DaemonSets.
+func (r *GpuReconciler) checkDriverDaemonSet(ctx context.Context) (metav1.ConditionStatus, string, string, *gpuv1beta1.DriverStatus) {
+	dsList := &appsv1.DaemonSetList{}
+	if err := r.List(ctx, dsList,
+		client.InNamespace(gpuOperatorNamespace),
+		client.MatchingLabels{"app": driverAppLabel},
+	); err != nil {
+		return metav1.ConditionFalse, reasonReadError, fmt.Sprintf("error listing driver DaemonSets: %v", err), nil
 	}
-	return m
+	if len(dsList.Items) == 0 {
+		return metav1.ConditionUnknown, reasonWaiting, "nvidia-driver-daemonset not found; driver installation may still be in progress", nil
+	}
+
+	var totalDesired, totalReady, totalAvailable, totalUpdated int32
+	for i := range dsList.Items {
+		ds := &dsList.Items[i]
+		totalDesired += ds.Status.DesiredNumberScheduled
+		totalReady += ds.Status.NumberReady
+		totalAvailable += ds.Status.NumberAvailable
+		totalUpdated += ds.Status.UpdatedNumberScheduled
+	}
+
+	// Version: report only when all DaemonSets agree (i.e. not mid-upgrade).
+	version := driverVersionFromDaemonSet(&dsList.Items[0])
+	for i := 1; i < len(dsList.Items); i++ {
+		if driverVersionFromDaemonSet(&dsList.Items[i]) != version {
+			version = ""
+			break
+		}
+	}
+
+	driverInfo := &gpuv1beta1.DriverStatus{
+		NodesReady: totalReady,
+		Version:    version,
+	}
+
+	if totalDesired == 0 {
+		return metav1.ConditionUnknown, reasonWaiting, "driver DaemonSet has no scheduled pods; no GPU nodes may be present", driverInfo
+	}
+	if totalReady < totalDesired || totalAvailable < totalDesired || totalUpdated < totalDesired {
+		return metav1.ConditionUnknown, reasonProgressing, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready, %d/%d available, %d/%d updated", totalReady, totalDesired, totalAvailable, totalDesired, totalUpdated, totalDesired), driverInfo
+	}
+	return metav1.ConditionTrue, reasonReady, fmt.Sprintf("driver DaemonSet: %d/%d nodes ready", totalReady, totalDesired), driverInfo
 }
 
-// SetupWithManager registers the controller with the manager and wires up a Node
-// watch so that preflight errors self-heal when nodes are added, removed, or replaced.
+// checkClusterPolicy reads the NVIDIA ClusterPolicy status via unstructured client.
+//
+// Unknown = ClusterPolicy not yet present or still converging.
+// False   = read error.
+// True    = ClusterPolicy.status.state is "ready" (NVIDIA's end-to-end validator passed).
+func (r *GpuReconciler) checkClusterPolicy(ctx context.Context) (metav1.ConditionStatus, string, string) {
+	cp := &unstructured.Unstructured{}
+	cp.SetGroupVersionKind(clusterPolicyGVK)
+
+	if err := r.Get(ctx, types.NamespacedName{Name: clusterPolicyName}, cp); err != nil {
+		if apierrors.IsNotFound(err) {
+			return metav1.ConditionUnknown, reasonWaiting, "ClusterPolicy not found; GPU Operator may still be starting"
+		}
+		return metav1.ConditionFalse, reasonReadError, fmt.Sprintf("error reading ClusterPolicy: %v", err)
+	}
+
+	state, _, _ := unstructured.NestedString(cp.Object, "status", "state")
+	switch state {
+	case "ready":
+		return metav1.ConditionTrue, reasonReady, "ClusterPolicy state is ready; NVIDIA validator passed"
+	case "notReady":
+		return metav1.ConditionUnknown, reasonProgressing, "ClusterPolicy state is notReady; NVIDIA validator has not passed yet"
+	case "ignored":
+		return metav1.ConditionUnknown, reasonWaiting, "ClusterPolicy state is ignored"
+	default:
+		return metav1.ConditionUnknown, reasonProgressing, fmt.Sprintf("ClusterPolicy state is %q; waiting for ready", state)
+	}
+}
+
+// driverVersionFromDaemonSet extracts the driver version from the DaemonSet's first
+// container image tag (e.g. "nvcr.io/nvidia/driver:535.129.03-ubuntu22.04" -> "535.129.03").
+// This reads from Spec (the desired image), not from individual pod statuses - it reports
+// the version the cluster is converging toward. Returns empty string when unparseable.
+func driverVersionFromDaemonSet(ds *appsv1.DaemonSet) string {
+	if len(ds.Spec.Template.Spec.Containers) == 0 {
+		return ""
+	}
+	image := ds.Spec.Template.Spec.Containers[0].Image
+	idx := strings.LastIndex(image, ":")
+	if idx < 0 {
+		return ""
+	}
+	tag := image[idx+1:]
+	// Tags are formatted as "<version>-<os>" (e.g. "535.129.03-ubuntu22.04").
+	if before, _, found := strings.Cut(tag, "-"); found {
+		return before
+	}
+	return tag
+}
+
+// SetupWithManager registers the controller and wires up watches on Nodes and
+// driver DaemonSets so preflight errors and driver-rollout state transitions both
+// trigger reconciliation. ClusterPolicy is intentionally not watched: the CRD is
+// installed by Helm and is absent on a fresh cluster - the periodic requeue picks
+// up state changes there.
 func (r *GpuReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	enqueueGpu := handler.EnqueueRequestsFromMapFunc(
 		func(ctx context.Context, _ client.Object) []reconcile.Request {
 			var list gpuv1beta1.GpuList
 			if err := r.List(ctx, &list); err != nil {
-				log.FromContext(ctx).Error(err, "failed to list Gpu CRs; node watch event will be lost")
+				log.FromContext(ctx).Error(err, "failed to list Gpu CRs; watch event will be lost")
 				return nil
 			}
 			reqs := make([]reconcile.Request, len(list.Items))
 			for i, gpu := range list.Items {
-				reqs[i] = reconcile.Request{
-					NamespacedName: types.NamespacedName{Name: gpu.Name},
-				}
+				reqs[i] = reconcile.Request{NamespacedName: types.NamespacedName{Name: gpu.Name}}
 			}
 			return reqs
 		},
 	)
 
-	// Trigger only on GPU nodes, and on updates only when the instance-type label
-	// or OS image changes, not on every kubelet heartbeat.
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&gpuv1beta1.Gpu{}).
 		Named("gpu").
@@ -340,6 +488,11 @@ func (r *GpuReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			&corev1.Node{},
 			enqueueGpu,
 			builder.WithPredicates(gpuNodeChangedPredicate()),
+		).
+		Watches(
+			&appsv1.DaemonSet{},
+			enqueueGpu,
+			builder.WithPredicates(driverDaemonSetPredicate()),
 		).
 		Complete(r)
 }
@@ -366,7 +519,6 @@ func gpuNodeChangedPredicate() predicate.Predicate {
 			if !wasGPU && !isGPU {
 				return false
 			}
-			// Fire when GPU node membership changes or OS image changes (e.g. node reprovisioned).
 			if wasGPU != isGPU {
 				return true
 			}
@@ -374,4 +526,14 @@ func gpuNodeChangedPredicate() predicate.Predicate {
 		},
 		GenericFunc: func(event.GenericEvent) bool { return false },
 	}
+}
+
+// driverDaemonSetPredicate fires only for DaemonSets matching the NVIDIA driver naming
+// convention in the gpu-operator namespace, so unrelated DaemonSet changes elsewhere in
+// the cluster don't trigger reconciles.
+func driverDaemonSetPredicate() predicate.Predicate {
+	return predicate.NewPredicateFuncs(func(obj client.Object) bool {
+		return obj.GetNamespace() == gpuOperatorNamespace &&
+			obj.GetLabels()["app"] == driverAppLabel
+	})
 }
