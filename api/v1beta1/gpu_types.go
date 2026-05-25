@@ -68,6 +68,7 @@ type GpuStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster
+// +kubebuilder:validation:XValidation:rule="self.metadata.name == 'gpu'",message="only a singleton Gpu resource named 'gpu' is allowed per cluster"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Reason",type="string",JSONPath=`.status.conditions[?(@.type=="Ready")].reason`
 // +kubebuilder:printcolumn:name="Driver Version",type="string",JSONPath=".status.driver.version"
@@ -75,8 +76,8 @@ type GpuStatus struct {
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // Gpu is the user-facing resource for managing GPU support in a Kyma cluster.
-// One Gpu resource exists per cluster. It configures the NVIDIA GPU Operator
-// and reports GPU health status.
+// One Gpu resource exists per cluster, named "gpu". It configures the NVIDIA
+// GPU Operator and reports GPU health status.
 type Gpu struct {
 	metav1.TypeMeta `json:",inline"`
 

@@ -35,8 +35,8 @@ spec:
       openAPIV3Schema:
         description: |-
           Gpu is the user-facing resource for managing GPU support in a Kyma cluster.
-          One Gpu resource exists per cluster. It configures the NVIDIA GPU Operator
-          and reports GPU health status.
+          One Gpu resource exists per cluster, named "gpu". It configures the NVIDIA
+          GPU Operator and reports GPU health status.
         properties:
           apiVersion:
             description: |-
@@ -155,6 +155,9 @@ spec:
                 type: string
             type: object
         type: object
+        x-kubernetes-validations:
+        - message: only a singleton Gpu resource named 'gpu' is allowed per cluster
+          rule: self.metadata.name == 'gpu'
     served: true
     storage: true
     subresources:

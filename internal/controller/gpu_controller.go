@@ -51,6 +51,7 @@ const (
 	gpuOperatorNamespace = "gpu-operator"
 	driverAppLabel       = "nvidia-driver-daemonset"
 	clusterPolicyName    = "cluster-policy"
+	expectedCRName       = "gpu"
 )
 
 var clusterPolicyGVK = schema.GroupVersionKind{
@@ -129,6 +130,21 @@ func (r *GpuReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	if !gpu.DeletionTimestamp.IsZero() {
 		return r.reconcileDelete(ctx, gpu)
+	}
+
+	// Singleton enforcement (defense-in-depth; CEL is the primary gate).
+	if gpu.Name != expectedCRName {
+		if err := r.applyStatus(ctx, gpu.Name, statusUpdate{
+			conditions: []metav1.Condition{{
+				Type:    condReady,
+				Status:  metav1.ConditionFalse,
+				Reason:  reasonForbiddenName,
+				Message: fmt.Sprintf("only a singleton Gpu CR named %q is reconciled; this CR is ignored", expectedCRName),
+			}},
+		}); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
 	}
 
 	if !controllerutil.ContainsFinalizer(gpu, finalizer) {

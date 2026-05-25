@@ -28,14 +28,15 @@ const (
 	condValidatorPassed = "ValidatorPassed"
 
 	// Condition reasons.
-	reasonWaiting      = "Waiting"      // outcome not yet determined; controller is still watching
-	reasonProgressing  = "Progressing"  // resource exists and is converging toward the desired state
-	reasonReady        = "Ready"        // condition is fully met
-	reasonPassed       = "Passed"       // one-shot check succeeded (e.g. preflight)
-	reasonFailed       = "Failed"       // definitively failed; requires user action
-	reasonInstalled    = "Installed"    // Helm release applied successfully
-	reasonUninstalling = "Uninstalling" // Helm release removal in progress
-	reasonReadError    = "ReadError"    // Kubernetes API read failed
+	reasonWaiting       = "Waiting"         // outcome not yet determined; controller is still watching
+	reasonProgressing   = "Progressing"     // resource exists and is converging toward the desired state
+	reasonReady         = "Ready"           // condition is fully met
+	reasonPassed        = "Passed"          // one-shot check succeeded (e.g. preflight)
+	reasonFailed        = "Failed"          // definitively failed; requires user action
+	reasonInstalled     = "Installed"       // Helm release applied successfully
+	reasonUninstalling  = "Uninstalling"    // Helm release removal in progress
+	reasonReadError     = "ReadError"       // Kubernetes API read failed
+	reasonForbiddenName = "ForbiddenCRName" // Gpu CR has a name other than the expected singleton name
 )
 
 // computeReadySummary derives the Ready summary condition from the four managed inputs.

@@ -55,7 +55,7 @@ func (f *fakeInstaller) Uninstall(_ context.Context) error {
 var _ helm.Installer = &fakeInstaller{}
 
 var _ = Describe("GpuReconciler", func() {
-	const gpuName = "test-gpu"
+	const gpuName = "gpu"
 
 	var (
 		reconciler *GpuReconciler
@@ -89,6 +89,21 @@ var _ = Describe("GpuReconciler", func() {
 			gpu := &gpuv1beta1.Gpu{}
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
 			Expect(gpu.Finalizers).To(ContainElement(finalizer))
+			Expect(installer.installCalls).To(Equal(0))
+		})
+	})
+
+	Describe("singleton enforcement", func() {
+		It("rejects creation of any Gpu CR whose name is not 'gpu' via CEL on the CRD", func() {
+			// CEL rejects at admission; the reconciler-side check is defense-in-depth
+			// for the case where CEL is not in effect, which envtest cannot simulate.
+			rogue := &gpuv1beta1.Gpu{
+				ObjectMeta: metav1.ObjectMeta{Name: "rogue-gpu"},
+			}
+			err := k8sClient.Create(ctx, rogue)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("singleton Gpu resource named 'gpu'"))
+
 			Expect(installer.installCalls).To(Equal(0))
 		})
 	})
