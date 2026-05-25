@@ -295,6 +295,16 @@ func (r *GpuReconciler) reconcileDelete(ctx context.Context, gpu *gpuv1beta1.Gpu
 		return ctrl.Result{}, nil
 	}
 
+	// Rogue CR (name != expectedCRName) somehow has our finalizer. Drop it
+	// without calling Helm - Uninstall would target the real release.
+	if gpu.Name != expectedCRName {
+		controllerutil.RemoveFinalizer(gpu, finalizer)
+		if err := r.Update(ctx, gpu); err != nil {
+			return ctrl.Result{}, fmt.Errorf("removing finalizer from rogue CR: %w", err)
+		}
+		return ctrl.Result{}, nil
+	}
+
 	logger.Info("Gpu CR deleted, uninstalling GPU Operator")
 
 	// Best-effort status update - do not block deletion if this fails.
