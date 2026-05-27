@@ -1,0 +1,21 @@
+name: GPU Build Image
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "[0-9]*"
+
+permissions:
+  id-token: write # Required for requesting the JWT token
+  contents: read # Required for actions/checkout
+
+jobs:
+  build-image:
+    uses: kyma-project/test-infra/.github/workflows/image-builder.yml@main
+    with:
+      tags: ${{ github.ref_name }}
+      name: gpu
+      dockerfile: Dockerfile
+      export-tags: true

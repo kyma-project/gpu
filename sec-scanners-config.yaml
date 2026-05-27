@@ -8,7 +8,9 @@ mend:
   language: golang-mod
   exclude:
     - "**/*_test.go"
+    - "**/test/**"
 checkmarx-one:
   preset: go-default
   exclude:
     - '**/*_test.go'
+    - '**/test/**'

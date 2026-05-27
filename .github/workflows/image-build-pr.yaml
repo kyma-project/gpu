@@ -1,0 +1,49 @@
+name: GPU Build Image PR
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+    paths-ignore:
+      - .github/workflows/stale.yml
+      - docs/**
+
+permissions:
+  id-token: write # Required for requesting the JWT token
+  contents: read # Required for actions/checkout
+
+jobs:
+  approve-image-build:
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'pr-build-image') }}
+    environment: pr-image-build
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Build approved"
+
+  build-image:
+    needs: approve-image-build
+    uses: kyma-project/test-infra/.github/workflows/image-builder.yml@main
+    with:
+      name: gpu
+      dockerfile: Dockerfile
+      export-tags: true
+
+  local-build:
+    name: Build Image Locally
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'pr-build-image') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Image Locally
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          outputs: type=cacheonly
+          push: false
+          tags: gpu:${{ github.event.pull_request.head.sha }}

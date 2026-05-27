@@ -149,6 +149,7 @@ build-installer: manifests generate kustomize ## Generate a consolidated YAML wi
 	mkdir -p dist
 	cd config/manager && "$(KUSTOMIZE)" edit set image controller=${IMG}
 	"$(KUSTOMIZE)" build config/default > dist/install.yaml
+	cp config/samples/gpu_v1beta1_gpu.yaml dist/instance.yaml
 
 ##@ Deployment
 

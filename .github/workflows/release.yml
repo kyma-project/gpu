@@ -1,0 +1,137 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release - bare semver without 'v' (e.g. 0.1.0)"
+        required: true
+        type: string
+      ref:
+        description: "Branch, tag, or SHA to release from"
+        required: true
+        default: "main"
+        type: string
+
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: europe-docker.pkg.dev/kyma-project/prod/gpu
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Check version format
+        run: |
+          if ! echo "${{ inputs.version }}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::version must be bare semver (e.g. 0.1.0) - got '${{ inputs.version }}'"
+            exit 1
+          fi
+
+      - name: Check tag does not already exist
+        run: |
+          if git ls-remote --quiet --exit-code origin "refs/tags/${{ inputs.version }}" >/dev/null; then
+            echo "::error::tag ${{ inputs.version }} already exists"
+            exit 1
+          fi
+
+  create-tag:
+    name: Create Tag
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create and push annotated tag
+        run: |
+          git tag -a "${{ inputs.version }}" \
+            -m "Release ${{ inputs.version }}"
+          git push origin "${{ inputs.version }}"
+
+  publish-release:
+    name: Publish Release
+    needs: create-tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.version }}
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Render install.yaml
+        run: |
+          make build-installer IMG=${{ env.IMAGE }}:${{ inputs.version }}
+
+      - name: Generate release notes
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 "${{ inputs.version }}^" 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            CHANGES=$(git log "${PREV_TAG}..${{ inputs.version }}" \
+              --pretty=format:"- %s (%h)" --no-merges)
+          else
+            CHANGES=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          cat > /tmp/release-notes.md << 'NOTES'
+          ## Changes
+
+          NOTES
+          echo "${CHANGES}" >> /tmp/release-notes.md
+          cat >> /tmp/release-notes.md << 'NOTES'
+
+          ## Installation
+
+          NOTES
+          echo '```bash' >> /tmp/release-notes.md
+          echo "# Install the GPU operator (CRD, RBAC, and controller)" >> /tmp/release-notes.md
+          echo "kubectl apply -f https://github.com/${{ github.repository }}/releases/download/${{ inputs.version }}/install.yaml" >> /tmp/release-notes.md
+          echo "" >> /tmp/release-notes.md
+          echo "# Create a Gpu resource to enable GPU support on your cluster" >> /tmp/release-notes.md
+          echo "kubectl apply -f https://github.com/${{ github.repository }}/releases/download/${{ inputs.version }}/instance.yaml" >> /tmp/release-notes.md
+          echo '```' >> /tmp/release-notes.md
+          cat >> /tmp/release-notes.md << 'NOTES'
+
+          ## Image
+
+          NOTES
+          echo "\`${{ env.IMAGE }}:${{ inputs.version }}\`" >> /tmp/release-notes.md
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ inputs.version }}" \
+            --title "${{ inputs.version }}" \
+            --notes-file /tmp/release-notes.md \
+            dist/install.yaml \
+            dist/instance.yaml
