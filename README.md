@@ -77,8 +77,9 @@ Status conditions reflect the current state:
 # Download the embedded NVIDIA chart and Garden Linux values (required before build)
 make chart-download
 make values-download
+
 # To replace an existing chart with a newer version, use chart-refresh instead of chart-download
-# make chart-refresh
+make chart-refresh
 
 # Build and test
 make build
