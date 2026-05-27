@@ -14,6 +14,9 @@ make test
 # Run a single test package
 KUBEBUILDER_ASSETS="$(bin/setup-envtest use --bin-dir bin -p path)" go test ./internal/helm/... -v -run TestLoadChart
 
+# Verify chart RBAC coverage (run after bumping the embedded chart)
+make test-rbac
+
 # Lint
 make lint
 
@@ -47,36 +50,35 @@ Cluster-scoped singleton resource. Spec allows an optional override for driver v
 
 There is no `State` enum field on the CRD. State is communicated exclusively through the conditions system described below.
 
-### Two Controllers (`internal/controller/`)
+### Single Controller (`internal/controller/`)
 
-**`GpuReconciler`** (`gpu_controller.go`) — owns installation:
-1. Add finalizer on first reconcile
-2. Run `detection.RunPreflight` — OutcomeWarn → set `Preflight=Unknown`, requeue 30s; OutcomeError → set `Preflight=False`, return with no requeue (self-heals via Node watch); OutcomeProceed → set `Preflight=True`, continue
-3. Load embedded chart bytes via `chart.GPUOperatorChart()` + build Helm values via `helm.BuildValues`
-4. Call `Installer.InstallOrUpgrade` — on success sets `HelmInstalled=True` and records `operatorVersion`; on failure sets `HelmInstalled=False`
-5. On deletion: best-effort `HelmInstalled=Unknown` status update, then `Installer.Uninstall`, then remove finalizer
-6. Watches `Node` objects via `gpuNodeChangedPredicate` — fires on GPU node create/delete and on OS image or instance-type label changes, suppressing kubelet heartbeats. Enqueues all `Gpu` CRs so preflight errors self-heal when nodes are replaced.
+**`GpuReconciler`** (`gpu_controller.go`) — owns the full lifecycle: installation, status monitoring, and deletion.
 
-**`GpuStatusReconciler`** (`gpu_status_reconciler.go`) — owns status monitoring:
-- Guard: skips reconcile if `HelmInstalled` condition is not True (absent, False, or Unknown — Helm hasn't succeeded yet)
-- Reads `nvidia-driver-daemonset` DaemonSet status counters → sets `DriverReady` condition on the Gpu CR
-- Reads `ClusterPolicy.status.state` (a plain string field on the NVIDIA CRD) via unstructured client → sets `ValidatorPassed` condition on the Gpu CR
-- Recomputes `Ready` summary from all four managed conditions after every sync
-- Always returns `RequeueAfter: 30s` as a polling safety net
+Reconcile flow (happy path):
+1. Singleton guard: rejects any CR not named `"gpu"` with `Ready=False`
+2. Add finalizer on first reconcile (return; watch event re-triggers)
+3. Run `detection.RunPreflight` — OutcomeWarn → set `Preflight=Unknown`, requeue 30s; OutcomeError → set `Preflight=False`, return with no requeue (self-heals via Node watch); OutcomeProceed → set `Preflight=True`, continue
+4. Load embedded chart bytes via `chart.GPUOperatorChart()` + build Helm values via `helm.BuildValues`
+5. Call `Installer.InstallOrUpgrade` — on success sets `HelmInstalled=True` and records `operatorVersion`; on failure sets `HelmInstalled=False`
+6. Read `nvidia-driver-daemonset` DaemonSet(s) status counters → set `DriverReady` condition (aggregates across multiple DaemonSets for mixed-kernel clusters)
+7. Read `ClusterPolicy.status.state` (a plain string field on the NVIDIA CRD) via unstructured client → set `ValidatorPassed` condition
+8. Compute `Ready` summary and apply all status fields; return `RequeueAfter: 30s`
+
+On deletion: best-effort `HelmInstalled=Unknown` status update, then `Installer.Uninstall`, then remove finalizer.
+
+Watches:
+- `Node` objects via `gpuNodeChangedPredicate` — fires on GPU node create/delete and on OS image or instance-type label changes, suppressing kubelet heartbeats. Enqueues all `Gpu` CRs so preflight errors self-heal when nodes are replaced.
+- `DaemonSet` objects via `driverDaemonSetPredicate` — fires only for DaemonSets with label `app=nvidia-driver-daemonset` in the `gpu-operator` namespace, so driver rollout state transitions trigger reconciliation.
 
 ### Condition System (`internal/controller/conditions.go`)
 Five stable condition types: `Preflight`, `HelmInstalled`, `DriverReady`, `ValidatorPassed`, `Ready`.
 
-The first four are **inputs** — each controller writes the conditions it owns:
-- `GpuReconciler` writes `Preflight` and `HelmInstalled`
-- `GpuStatusReconciler` writes `DriverReady` and `ValidatorPassed`
-
-`Ready` is a **computed summary** — derived from the four inputs by `computeReadySummary`:
+The first four are **inputs** written by `GpuReconciler`. `Ready` is a **computed summary** derived by `computeReadySummary`:
 - Any input is `False` → `Ready=False` (definitively broken)
 - Any input is `Unknown` or absent → `Ready=Unknown` (still converging)
 - All four are `True` → `Ready=True`
 
-All conditions use the tri-state (`True` / `False` / `Unknown`). `False` means definitively broken and requires user action. `Unknown` means still converging — the controller is waiting. `conditionMatches` compares status+reason+message to skip no-op status patches.
+All conditions use the tri-state (`True` / `False` / `Unknown`). `False` means definitively broken and requires user action. `Unknown` means still converging.
 
 ### Helm Layer (`internal/helm/`)
 - `Installer` is an interface (`interface.go`) with `InstallOrUpgrade` and `Uninstall`. The concrete type is `Client` (`installer.go`), which wraps Helm v3 SDK `action.Configuration` with Kubernetes secrets as the storage backend. Tests inject a `fakeInstaller`.
@@ -89,12 +91,14 @@ All conditions use the tri-state (`True` / `False` / `Unknown`). `False` means d
 ### Embedded Artifacts
 `internal/chart/gpu-operator/*.tgz` and `internal/chart/values/gardenlinux.yaml` are embedded via `//go:embed`. They must exist before building; `make chart-download` and `make values-download` fetch them. The `build` target runs `chart-verify` to guard against missing files.
 
-`chart.GPUOperatorChart()` returns the raw bytes of the highest semver `.tgz` in the embedded directory (parsed via `github.com/Masterminds/semver/v3`). `chart.GPUOperatorChartVersion()` returns the version string of the same file by trimming the `gpu-operator-` prefix and `.tgz` suffix from the filename.
+`chart.GPUOperatorChart()` returns the raw bytes of the highest semver `.tgz` in the embedded directory. `chart.GPUOperatorChartVersion()` returns the version string. `chart.GardenLinuxValues()` returns the embedded Garden Linux values override.
 
 ### Testing Conventions
 Two styles are used deliberately:
 - **stdlib `testing`** — for pure unit tests (stateless functions, predicates). See `gpu_node_predicate_test.go`, `machinetypes_test.go`.
-- **Ginkgo + Gomega** — for envtest-based controller tests that need a real API server. `BeforeSuite` starts envtest once per suite; `BeforeEach`/`AfterEach` manage per-test state. See `suite_test.go`, `gpu_controller_test.go`, `gpu_status_reconciler_test.go`.
+- **Ginkgo + Gomega** — for envtest-based controller tests that need a real API server. `BeforeSuite` starts envtest once per suite; `BeforeEach`/`AfterEach` manage per-test state. See `suite_test.go`, `gpu_controller_test.go`.
+
+`make test-rbac` runs `TestChartResourcesCoveredByRBAC` (in `internal/chart/rbac_test.go`) — CI fails if the chart produces a resource type not covered by the RBAC markers in `gpu_controller.go`.
 
 ### GoLand Debugging
 Run configuration: **Go Build**, kind = **Package**, package path = `github.com/kyma-project/gpu/cmd`. Set `KUBECONFIG` env var to your cluster kubeconfig. The controller will connect to the remote cluster and begin reconciling immediately.
@@ -102,4 +106,5 @@ Run configuration: **Go Build**, kind = **Package**, package path = `github.com/
 ## Key Constraints
 - Only Garden Linux nodes are supported for GPU workloads (v1 scope). Non-Garden-Linux GPU nodes → `Preflight=False`, no automatic requeue — but the Node watch self-heals when the node is replaced or its OS image changes.
 - The embedded chart must be `.tgz` files in `internal/chart/gpu-operator/`. If multiple versions exist, `chart.GPUOperatorChart()` picks the highest semver.
-- RBAC markers in `gpu_controller.go` use a catch-all `"*"/"*"` rule because Helm applies arbitrary CRDs. `make manifests` regenerates `config/rbac/role.yaml` from these markers.
+- RBAC markers in `gpu_controller.go` are explicit per-resource grants (no wildcard `*/*`). `make manifests` regenerates `config/rbac/role.yaml` from these markers. `make test-rbac` verifies coverage after chart upgrades.
+- Singleton enforcement is dual-layered: a CEL validation rule on the CRD rejects non-`"gpu"` names at admission, and the controller also rejects them at reconcile time as defense-in-depth.
