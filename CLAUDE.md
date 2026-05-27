@@ -67,7 +67,7 @@ Reconcile flow (happy path):
 On deletion: best-effort `HelmInstalled=Unknown` status update, then `Installer.Uninstall`, then remove finalizer.
 
 Watches:
-- `Node` objects via `gpuNodeChangedPredicate` — fires on GPU node create/delete and on OS image or instance-type label changes, suppressing kubelet heartbeats. Enqueues all `Gpu` CRs so preflight errors self-heal when nodes are replaced.
+- `Node` objects via `gpuNodeChangedPredicate` — fires on GPU node create/delete, when a node transitions into or out of GPU membership (instance-type label changes that cross the GPU/non-GPU boundary), or when the OS image changes on a GPU node. Kubelet heartbeats are suppressed. Enqueues all `Gpu` CRs so preflight errors self-heal when nodes are replaced.
 - `DaemonSet` objects via `driverDaemonSetPredicate` — fires only for DaemonSets with label `app=nvidia-driver-daemonset` in the `gpu-operator` namespace, so driver rollout state transitions trigger reconciliation.
 
 ### Condition System (`internal/controller/conditions.go`)
