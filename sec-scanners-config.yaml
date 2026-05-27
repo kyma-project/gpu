@@ -1,9 +1,9 @@
 module-name: gpu
 kind: kyma
-rc-tag: 0.1.0
+rc-tag: 0.1.1
 bdba:
   - europe-docker.pkg.dev/kyma-project/prod/gpu:main
-  - europe-docker.pkg.dev/kyma-project/prod/gpu:0.1.0
+  - europe-docker.pkg.dev/kyma-project/prod/gpu:0.1.1
 mend:
   language: golang-mod
   exclude:
