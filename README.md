@@ -1,43 +1,103 @@
-> **NOTE:** This is a general template that you can use for a project README.md. Except for the mandatory sections, use only those sections that suit your use case but keep the proposed section order.
->
-> Mandatory sections: 
-> - `Overview`
-> - `Prerequisites`, if there are any requirements regarding hard- or software
-> - `Installation`
-> - `Contributing` - do not change this!
-> - `Code of Conduct` - do not change this!
-> - `Licensing` - do not change this!
+[![REUSE status](https://api.reuse.software/badge/github.com/kyma-project/gpu)](https://api.reuse.software/info/github.com/kyma-project/gpu)
+[![Build](https://github.com/kyma-project/gpu/actions/workflows/image-build-main.yaml/badge.svg)](https://github.com/kyma-project/gpu/actions/workflows/image-build-main.yaml)
 
-# {Project Title}
-<!--- mandatory --->
-> Modify the title and insert the name of your project. Use Heading 1 (H1).
+# GPU
 
 ## Overview
-<!--- mandatory section --->
 
-> Provide a description of the project's functionality.
->
-> If it is an example README.md, describe what the example illustrates.
+The GPU module manages the [NVIDIA GPU Operator](https://github.com/NVIDIA/gpu-operator) lifecycle on [SAP BTP, Kyma runtime](https://help.sap.com/docs/btp/sap-business-technology-platform/kyma-environment) clusters. It handles installation, upgrades, and health monitoring through a single `Gpu` custom resource.
+
+The operator embeds the NVIDIA GPU Operator Helm chart and Garden Linux driver values directly in the binary - no network access is needed during reconciliation. Pre-compiled drivers are applied automatically for Garden Linux nodes, skipping runtime kernel module compilation.
 
 ## Prerequisites
 
-> List the requirements to run the project or example.
+- A Kyma cluster with GPU machine types (AWS g4dn/g6, GCP g2, Azure NC)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
 
 ## Installation
 
-> Explain the steps to install your project. If there are multiple installation options, mention the recommended one and include others in a separate document. Create an ordered list for each installation task.
->
-> If it is an example README.md, describe how to build, run locally, and deploy the example. Format the example as code blocks and specify the language, highlighting where possible. Explain how you can validate that the example ran successfully. For example, define the expected output or commands to run which check a successful deployment.
->
-> Add subsections (H3) for better readability.
+1. Install the GPU operator (CRD, RBAC, and controller):
+
+   ```bash
+   kubectl apply -f https://github.com/kyma-project/gpu/releases/latest/download/install.yaml
+   ```
+
+2. Enable GPU support on your cluster by creating a `Gpu` resource:
+
+   ```bash
+   kubectl apply -f https://github.com/kyma-project/gpu/releases/latest/download/instance.yaml
+   ```
+
+3. Verify the installation:
+
+   ```bash
+   kubectl get gpu
+   ```
+
+   After successful installation:
+
+   ```
+   NAME   READY   REASON   DRIVER VERSION   NODES READY   AGE
+   gpu    True    Ready    590              1             5m
+   ```
+
+To install a specific version, replace `latest` with the version number, for example `0.1.1`:
+
+```bash
+kubectl apply -f https://github.com/kyma-project/gpu/releases/download/0.1.1/install.yaml
+kubectl apply -f https://github.com/kyma-project/gpu/releases/download/0.1.1/instance.yaml
+```
 
 ## Usage
 
-> Explain how to use the project. You can create multiple subsections (H3). Include the instructions or provide links to the related documentation.
+The `Gpu` resource is a cluster-scoped singleton. Once applied, the operator installs the NVIDIA GPU Operator and monitors its status. You can optionally pin a specific driver version:
+
+```yaml
+apiVersion: gpu.kyma-project.io/v1beta1
+kind: Gpu
+metadata:
+  name: gpu
+spec:
+  driver:
+    version: "590.48.01"  # optional, omit to use the default
+```
+
+Status conditions reflect the current state:
+
+| Condition | Description |
+|---|---|
+| `Preflight` | Garden Linux GPU nodes detected and validated |
+| `HelmInstalled` | NVIDIA GPU Operator chart installed or upgraded |
+| `DriverReady` | NVIDIA driver DaemonSet has nodes ready |
+| `ValidatorPassed` | NVIDIA operator validator completed successfully |
+| `Ready` | Summary of all conditions |
 
 ## Development
 
-> Add instructions on how to develop the project or example. It must be clear what to do and, for example, how to trigger the tests so that other contributors know how to make their pull requests acceptable. Include the instructions or provide links to related documentation.
+```bash
+# Download the embedded NVIDIA chart and Garden Linux values (required before build)
+make chart-download
+make values-download
+
+# Build and test
+make build
+make test
+
+# Run the controller locally against your current cluster
+make run
+```
+
+### GoLand
+
+To run and debug the controller against a real cluster from GoLand:
+
+1. Open **Run > Edit Configurations** and add a new **Go Build** configuration
+2. Set kind to **Package** and package path to `github.com/kyma-project/gpu/cmd`
+3. Add environment variable `KUBECONFIG` pointing to your cluster kubeconfig
+4. Run or debug - the controller connects to the cluster and starts reconciling immediately
+5. Apply the `Gpu` CR to trigger reconciliation: `kubectl apply -f config/samples/gpu_v1beta1_gpu.yaml`
+
+Make sure `make chart-download && make values-download` have been run first so the embedded artifacts exist.
 
 ## Embedded NVIDIA GPU Operator Chart
 
