@@ -34,16 +34,20 @@ jobs:
           fetch-depth: 0
 
       - name: Check version format
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          if ! echo "${{ inputs.version }}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::version must be bare semver (e.g. 0.1.0) - got '${{ inputs.version }}'"
+          if ! echo "${VERSION}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::version must be bare semver (e.g. 0.1.0) - got '${VERSION}'"
             exit 1
           fi
 
       - name: Check tag does not already exist
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          if git ls-remote --quiet --exit-code origin "refs/tags/${{ inputs.version }}" >/dev/null; then
-            echo "::error::tag ${{ inputs.version }} already exists"
+          if git ls-remote --quiet --exit-code origin "refs/tags/${VERSION}" >/dev/null; then
+            echo "::error::tag ${VERSION} already exists"
             exit 1
           fi
 
@@ -66,10 +70,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Create and push annotated tag
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          git tag -a "${{ inputs.version }}" \
-            -m "Release ${{ inputs.version }}"
-          git push origin "${{ inputs.version }}"
+          git tag -a "${VERSION}" -m "Release ${VERSION}"
+          git push origin "${VERSION}"
 
   publish-release:
     name: Publish Release
@@ -78,10 +83,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout at tag
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.version }}
+          ref: ${{ inputs.ref }}
           fetch-depth: 0
 
       - name: Setup Go
@@ -90,48 +95,50 @@ jobs:
           go-version-file: go.mod
 
       - name: Render install.yaml
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          make build-installer IMG=${{ env.IMAGE }}:${{ inputs.version }}
+          make build-installer IMG=${IMAGE}:${VERSION}
 
       - name: Generate release notes
+        env:
+          VERSION: ${{ inputs.version }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 "${{ inputs.version }}^" 2>/dev/null || echo "")
+          PREV_TAG=$(git describe --tags --abbrev=0 "${VERSION}^" 2>/dev/null || echo "")
           if [ -n "$PREV_TAG" ]; then
-            CHANGES=$(git log "${PREV_TAG}..${{ inputs.version }}" \
+            CHANGES=$(git log "${PREV_TAG}..${VERSION}" \
               --pretty=format:"- %s (%h)" --no-merges)
           else
             CHANGES=$(git log --pretty=format:"- %s (%h)" --no-merges)
           fi
-          cat > /tmp/release-notes.md << 'NOTES'
-          ## Changes
+          cat > /tmp/release-notes.md << EOF
+## Changes
 
-          NOTES
-          echo "${CHANGES}" >> /tmp/release-notes.md
-          cat >> /tmp/release-notes.md << 'NOTES'
+${CHANGES}
 
-          ## Installation
+## Installation
 
-          NOTES
-          echo '```bash' >> /tmp/release-notes.md
-          echo "# Install the GPU operator (CRD, RBAC, and controller)" >> /tmp/release-notes.md
-          echo "kubectl apply -f https://github.com/${{ github.repository }}/releases/download/${{ inputs.version }}/install.yaml" >> /tmp/release-notes.md
-          echo "" >> /tmp/release-notes.md
-          echo "# Create a Gpu resource to enable GPU support on your cluster" >> /tmp/release-notes.md
-          echo "kubectl apply -f https://github.com/${{ github.repository }}/releases/download/${{ inputs.version }}/instance.yaml" >> /tmp/release-notes.md
-          echo '```' >> /tmp/release-notes.md
-          cat >> /tmp/release-notes.md << 'NOTES'
+\`\`\`bash
+# Install the GPU operator (CRD, RBAC, and controller)
+kubectl apply -f https://github.com/${REPOSITORY}/releases/download/${VERSION}/install.yaml
 
-          ## Image
+# Create a Gpu resource to enable GPU support on your cluster
+kubectl apply -f https://github.com/${REPOSITORY}/releases/download/${VERSION}/instance.yaml
+\`\`\`
 
-          NOTES
-          echo "\`${{ env.IMAGE }}:${{ inputs.version }}\`" >> /tmp/release-notes.md
+## Image
+
+\`${IMAGE}:${VERSION}\`
+EOF
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
         run: |
-          gh release create "${{ inputs.version }}" \
-            --title "${{ inputs.version }}" \
+          gh release create "${VERSION}" \
+            --title "${VERSION}" \
             --notes-file /tmp/release-notes.md \
             dist/install.yaml \
             dist/instance.yaml
