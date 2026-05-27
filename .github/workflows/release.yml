@@ -50,6 +50,19 @@ jobs:
             exit 1
           fi
 
+  build-image:
+    name: Build Image
+    needs: validate
+    permissions:
+      id-token: write
+      contents: read
+    uses: kyma-project/test-infra/.github/workflows/image-builder.yml@main
+    with:
+      name: gpu
+      dockerfile: Dockerfile
+      context: .
+      tags: ${{ inputs.version }}
+
   test:
     name: Test
     needs: validate
@@ -75,7 +88,7 @@ jobs:
 
   create-tag:
     name: Create Tag
-    needs: test
+    needs: [build-image, test]
     runs-on: ubuntu-latest
     permissions:
       contents: write
