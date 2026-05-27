@@ -1,4 +1,3 @@
-[![REUSE status](https://api.reuse.software/badge/github.com/kyma-project/gpu)](https://api.reuse.software/info/github.com/kyma-project/gpu)
 [![Build](https://github.com/kyma-project/gpu/actions/workflows/image-build-main.yaml/badge.svg)](https://github.com/kyma-project/gpu/actions/workflows/image-build-main.yaml)
 
 # GPU
@@ -11,7 +10,7 @@ The operator embeds the NVIDIA GPU Operator Helm chart and Garden Linux driver v
 
 ## Prerequisites
 
-- A Kyma cluster with GPU machine types (AWS g4dn/g6, GCP g2, Azure NC)
+- A Kyma cluster with GPU machine types (AWS g4dn/g6, GCP g2, Azure Standard_NC)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
 
 ## Installation
@@ -78,6 +77,8 @@ Status conditions reflect the current state:
 # Download the embedded NVIDIA chart and Garden Linux values (required before build)
 make chart-download
 make values-download
+# To replace an existing chart with a newer version, use chart-refresh instead of chart-download
+# make chart-refresh
 
 # Build and test
 make build
