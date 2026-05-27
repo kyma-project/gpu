@@ -155,8 +155,10 @@ rules:
   - rolebindings
   - roles
   verbs:
+  - bind
   - create
   - delete
+  - escalate
   - get
   - list
   - patch
