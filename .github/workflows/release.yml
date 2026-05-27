@@ -112,25 +112,25 @@ jobs:
           else
             CHANGES=$(git log --pretty=format:"- %s (%h)" --no-merges)
           fi
-          cat > /tmp/release-notes.md << EOF
-## Changes
-
-${CHANGES}
-
-## Installation
-
-\`\`\`bash
-# Install the GPU operator (CRD, RBAC, and controller)
-kubectl apply -f https://github.com/${REPOSITORY}/releases/download/${VERSION}/install.yaml
-
-# Create a Gpu resource to enable GPU support on your cluster
-kubectl apply -f https://github.com/${REPOSITORY}/releases/download/${VERSION}/instance.yaml
-\`\`\`
-
-## Image
-
-\`${IMAGE}:${VERSION}\`
-EOF
+          {
+            echo "## Changes"
+            echo ""
+            echo "${CHANGES}"
+            echo ""
+            echo "## Installation"
+            echo ""
+            echo '```bash'
+            echo "# Install the GPU operator (CRD, RBAC, and controller)"
+            echo "kubectl apply -f https://github.com/${REPOSITORY}/releases/download/${VERSION}/install.yaml"
+            echo ""
+            echo "# Create a Gpu resource to enable GPU support on your cluster"
+            echo "kubectl apply -f https://github.com/${REPOSITORY}/releases/download/${VERSION}/instance.yaml"
+            echo '```'
+            echo ""
+            echo "## Image"
+            echo ""
+            echo "\`${IMAGE}:${VERSION}\`"
+          } > /tmp/release-notes.md
 
       - name: Create GitHub Release
         env:
