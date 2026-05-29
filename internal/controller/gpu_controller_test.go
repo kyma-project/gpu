@@ -512,12 +512,25 @@ var _ = Describe("GpuReconciler", func() {
 		It("force-removes the finalizer when Helm uninstall times out", func() {
 			installer.uninstallErr = fmt.Errorf("uninstalling gpu-operator: %w", context.DeadlineExceeded)
 
+			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: gpuOperatorNamespace}}
+			err := k8sClient.Create(ctx, ns)
+			if err != nil {
+				Expect(err.Error()).To(ContainSubstring("already exists"))
+			}
+
 			gpu := &gpuv1beta1.Gpu{}
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
 			Expect(k8sClient.Delete(ctx, gpu)).To(Succeed())
 
-			_, err := reconciler.Reconcile(ctx, req)
+			_, err = reconciler.Reconcile(ctx, req)
 			Expect(err).NotTo(HaveOccurred(), "timeout must force-remove finalizer, not block the CR forever")
+
+			// Namespace cleanup must be attempted even on timeout.
+			liveNs := &corev1.Namespace{}
+			err = k8sClient.Get(ctx, types.NamespacedName{Name: gpuOperatorNamespace}, liveNs)
+			if err == nil {
+				Expect(liveNs.DeletionTimestamp).NotTo(BeNil(), "namespace should be terminating even after timeout")
+			}
 
 			gpu = &gpuv1beta1.Gpu{}
 			err = k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)
@@ -541,6 +554,7 @@ var _ = Describe("GpuReconciler", func() {
 
 			_, err = reconciler.Reconcile(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(installer.uninstallCalled).To(BeTrue(), "Uninstall must be called before namespace cleanup")
 
 			liveNs := &corev1.Namespace{}
 			err = k8sClient.Get(ctx, types.NamespacedName{Name: gpuOperatorNamespace}, liveNs)

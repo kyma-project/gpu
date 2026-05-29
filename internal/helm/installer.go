@@ -74,6 +74,8 @@ func (c *Client) InstallOrUpgrade(ctx context.Context, chartData []byte, values 
 
 // Uninstall removes the NVIDIA GPU Operator Helm release. It waits for pods to
 // terminate up to timeout so a rapid reinstall does not race with the old driver unloading.
+// Note: ctx is accepted for interface consistency but is not forwarded to Helm - action.Uninstall
+// does not accept a context. Cancellation is bounded solely by the timeout parameter.
 func (c *Client) Uninstall(_ context.Context, timeout time.Duration) error {
 	cfg, err := c.actionConfig()
 	if err != nil {

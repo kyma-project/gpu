@@ -322,9 +322,10 @@ func (r *GpuReconciler) reconcileDelete(ctx context.Context, gpu *gpuv1beta1.Gpu
 	// Uninstall is idempotent - returns nil if the release is already gone.
 	if err := r.Installer.Uninstall(ctx, deleteTimeout); err != nil {
 		if isTimeoutError(err) {
-			// Helm timed out waiting for pods to terminate. Force-remove the finalizer
-			// so the CR can be deleted. The user must clean up the gpu-operator namespace manually.
 			logger.Error(err, "helm uninstall timed out, forcing finalizer removal; manual cleanup of gpu-operator namespace may be required")
+			if nsErr := r.deleteNamespace(ctx, gpuOperatorNamespace); nsErr != nil {
+				logger.Error(nsErr, "failed to delete namespace after helm timeout")
+			}
 			return r.removeFinalizer(ctx, gpu.Name)
 		}
 		return ctrl.Result{}, fmt.Errorf("helm uninstall: %w", err)
@@ -353,6 +354,9 @@ func (r *GpuReconciler) deleteNamespace(ctx context.Context, name string) error 
 func (r *GpuReconciler) removeFinalizer(ctx context.Context, name string) (ctrl.Result, error) {
 	live := &gpuv1beta1.Gpu{}
 	if err := r.Get(ctx, types.NamespacedName{Name: name}, live); err != nil {
+		if apierrors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, fmt.Errorf("re-fetching Gpu CR for finalizer removal: %w", err)
 	}
 	controllerutil.RemoveFinalizer(live, finalizer)
