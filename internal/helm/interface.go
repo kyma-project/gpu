@@ -14,7 +14,10 @@ limitations under the License.
 
 package helm
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // Installer is the contract the controller uses to drive Helm operations.
 // The concrete *Client talks to a real cluster; tests inject a fake.
@@ -23,6 +26,6 @@ type Installer interface {
 	InstallOrUpgrade(ctx context.Context, chartData []byte, values map[string]any) error
 
 	// Uninstall removes the GPU Operator Helm release. It is idempotent: returns nil
-	// if no release exists.
-	Uninstall(ctx context.Context) error
+	// if no release exists. timeout bounds how long the uninstall waits for pods to terminate.
+	Uninstall(ctx context.Context, timeout time.Duration) error
 }

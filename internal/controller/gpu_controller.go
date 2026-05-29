@@ -16,6 +16,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -47,6 +48,7 @@ import (
 
 const (
 	requeueWarn          = 30 * time.Second
+	deleteTimeout        = 3 * time.Minute
 	finalizer            = "gpu.kyma-project.io/gpu-operator"
 	gpuOperatorNamespace = "gpu-operator"
 	driverAppLabel       = "nvidia-driver-daemonset"
@@ -92,7 +94,7 @@ type GpuReconciler struct {
 // +kubebuilder:rbac:groups=gpu.kyma-project.io,resources=gpus/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=gpu.kyma-project.io,resources=gpus/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create
+// +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;delete
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=serviceaccounts;configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments;daemonsets,verbs=get;list;watch;create;update;patch;delete
@@ -318,13 +320,39 @@ func (r *GpuReconciler) reconcileDelete(ctx context.Context, gpu *gpuv1beta1.Gpu
 	}
 
 	// Uninstall is idempotent - returns nil if the release is already gone.
-	if err := r.Installer.Uninstall(ctx); err != nil {
+	if err := r.Installer.Uninstall(ctx, deleteTimeout); err != nil {
+		if isTimeoutError(err) {
+			// Helm timed out waiting for pods to terminate. Force-remove the finalizer
+			// so the CR can be deleted. The user must clean up the gpu-operator namespace manually.
+			logger.Error(err, "helm uninstall timed out, forcing finalizer removal; manual cleanup of gpu-operator namespace may be required")
+			return r.removeFinalizer(ctx, gpu.Name)
+		}
 		return ctrl.Result{}, fmt.Errorf("helm uninstall: %w", err)
 	}
 
-	// Re-read after the status apply above bumped ResourceVersion.
+	// Helm never deletes namespaces; clean it up explicitly with foreground propagation
+	// so all child resources are gone before the namespace itself disappears.
+	if err := r.deleteNamespace(ctx, gpuOperatorNamespace); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return r.removeFinalizer(ctx, gpu.Name)
+}
+
+func (r *GpuReconciler) deleteNamespace(ctx context.Context, name string) error {
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name}}
+	if err := r.Delete(ctx, ns, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("deleting namespace %s: %w", name, err)
+	}
+	return nil
+}
+
+func (r *GpuReconciler) removeFinalizer(ctx context.Context, name string) (ctrl.Result, error) {
 	live := &gpuv1beta1.Gpu{}
-	if err := r.Get(ctx, types.NamespacedName{Name: gpu.Name}, live); err != nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: name}, live); err != nil {
 		return ctrl.Result{}, fmt.Errorf("re-fetching Gpu CR for finalizer removal: %w", err)
 	}
 	controllerutil.RemoveFinalizer(live, finalizer)
@@ -332,6 +360,10 @@ func (r *GpuReconciler) reconcileDelete(ctx context.Context, gpu *gpuv1beta1.Gpu
 		return ctrl.Result{}, fmt.Errorf("removing finalizer: %w", err)
 	}
 	return ctrl.Result{}, nil
+}
+
+func isTimeoutError(err error) bool {
+	return errors.Is(err, context.DeadlineExceeded)
 }
 
 // statusUpdate carries the partial status the reconciler wants to write in this cycle.

@@ -17,6 +17,8 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -47,7 +49,7 @@ func (f *fakeInstaller) InstallOrUpgrade(_ context.Context, _ []byte, _ map[stri
 	return f.installErr
 }
 
-func (f *fakeInstaller) Uninstall(_ context.Context) error {
+func (f *fakeInstaller) Uninstall(_ context.Context, _ time.Duration) error {
 	f.uninstallCalled = true
 	return f.uninstallErr
 }
@@ -464,7 +466,7 @@ var _ = Describe("GpuReconciler", func() {
 	})
 
 	Describe("deletion", func() {
-		It("calls Helm uninstall and removes the finalizer", func() {
+		BeforeEach(func() {
 			newGpu(gpuName)
 			_, _ = reconciler.Reconcile(ctx, req) // adds finalizer
 			newGpuNode("gpu-node-del", "g4dn.xlarge", "Garden Linux 1312.3")
@@ -472,14 +474,14 @@ var _ = Describe("GpuReconciler", func() {
 			_, err := reconciler.Reconcile(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(installer.installCalls).To(Equal(1))
+		})
 
-			By("deleting the CR")
+		It("calls Helm uninstall and removes the finalizer on success", func() {
 			gpu := &gpuv1beta1.Gpu{}
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
 			Expect(k8sClient.Delete(ctx, gpu)).To(Succeed())
 
-			By("reconciling the deletion")
-			_, err = reconciler.Reconcile(ctx, req)
+			_, err := reconciler.Reconcile(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(installer.uninstallCalled).To(BeTrue())
 
@@ -488,6 +490,74 @@ var _ = Describe("GpuReconciler", func() {
 			if err == nil {
 				Expect(gpu.Finalizers).NotTo(ContainElement(finalizer))
 			}
+		})
+
+		It("returns an error and keeps the finalizer on non-timeout Helm failure", func() {
+			installer.uninstallErr = errors.New("simulated uninstall failure")
+
+			gpu := &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, gpu)).To(Succeed())
+
+			_, err := reconciler.Reconcile(ctx, req)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("helm uninstall"))
+
+			// Finalizer must still be present so the CR is not lost.
+			gpu = &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(gpu.Finalizers).To(ContainElement(finalizer))
+		})
+
+		It("force-removes the finalizer when Helm uninstall times out", func() {
+			installer.uninstallErr = fmt.Errorf("uninstalling gpu-operator: %w", context.DeadlineExceeded)
+
+			gpu := &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, gpu)).To(Succeed())
+
+			_, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred(), "timeout must force-remove finalizer, not block the CR forever")
+
+			gpu = &gpuv1beta1.Gpu{}
+			err = k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)
+			if err == nil {
+				Expect(gpu.Finalizers).NotTo(ContainElement(finalizer))
+			}
+		})
+
+		It("deletes the gpu-operator namespace after successful Helm uninstall", func() {
+			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: gpuOperatorNamespace}}
+			err := k8sClient.Create(ctx, ns)
+			if err != nil {
+				// Namespace may already exist (e.g. terminating from a prior test) - that's fine,
+				// we just need it to be present so deleteNamespace can act on it.
+				Expect(err.Error()).To(ContainSubstring("already exists"))
+			}
+
+			gpu := &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, gpu)).To(Succeed())
+
+			_, err = reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+
+			liveNs := &corev1.Namespace{}
+			err = k8sClient.Get(ctx, types.NamespacedName{Name: gpuOperatorNamespace}, liveNs)
+			// Either deleted (NotFound) or marked for deletion (DeletionTimestamp set).
+			if err == nil {
+				Expect(liveNs.DeletionTimestamp).NotTo(BeNil(), "namespace should be terminating")
+			}
+		})
+
+		It("ignores NotFound when deleting the gpu-operator namespace", func() {
+			// Namespace does not exist - deleteNamespace must not return an error.
+			gpu := &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, gpu)).To(Succeed())
+
+			_, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })

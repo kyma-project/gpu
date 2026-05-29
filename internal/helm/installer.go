@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
@@ -71,8 +72,9 @@ func (c *Client) InstallOrUpgrade(ctx context.Context, chartData []byte, values 
 	return upgrade(ctx, cfg, chrt, values)
 }
 
-// Uninstall removes the NVIDIA GPU Operator Helm release.
-func (c *Client) Uninstall(_ context.Context) error {
+// Uninstall removes the NVIDIA GPU Operator Helm release. It waits for pods to
+// terminate up to timeout so a rapid reinstall does not race with the old driver unloading.
+func (c *Client) Uninstall(_ context.Context, timeout time.Duration) error {
 	cfg, err := c.actionConfig()
 	if err != nil {
 		return err
@@ -87,7 +89,8 @@ func (c *Client) Uninstall(_ context.Context) error {
 	}
 
 	u := action.NewUninstall(cfg)
-	u.Wait = false
+	u.Wait = true
+	u.Timeout = timeout
 	if _, err := u.Run(releaseName); err != nil {
 		return fmt.Errorf("uninstalling gpu-operator: %w", err)
 	}
