@@ -89,6 +89,10 @@ func RunPreflight(ctx context.Context, c sigs.Client) (PreflightResult, error) {
 	}
 
 	if len(unsupported) > 0 {
+		// Unsupported nodes are checked before mixed-OS: if any node has an unknown OS
+		// it is excluded from osTypes, so the mixed-OS check below would fire on a
+		// partial view of the cluster. Reporting unsupported nodes first gives a clearer
+		// error and avoids the misleading "mixed OS" message.
 		return PreflightResult{
 			Outcome: OutcomeError,
 			Reason:  fmt.Sprintf("GPU nodes with unsupported OS: %v; supported operating systems: Garden Linux, Ubuntu", unsupported),
@@ -102,6 +106,8 @@ func RunPreflight(ctx context.Context, c sigs.Client) (PreflightResult, error) {
 		}, nil
 	}
 
+	// At this point: no unsupported nodes, no mixed OS, so osTypes contains exactly
+	// one entry. Range-iterate to extract it (len == 1 is guaranteed by the checks above).
 	var detectedOS OSType
 	for os := range osTypes {
 		detectedOS = os

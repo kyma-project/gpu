@@ -111,7 +111,7 @@ type GpuReconciler struct {
 //
 // Flow (happy path):
 //  1. Add finalizer if missing (return; the resulting watch event re-triggers).
-//  2. Pre-flight check (Garden Linux on every GPU node).
+//  2. Pre-flight check (supported, homogeneous OS across all GPU nodes).
 //  3. Helm install or upgrade of the embedded NVIDIA GPU Operator chart.
 //  4. Read driver DaemonSet -> DriverReady condition.
 //  5. Read ClusterPolicy -> ValidatorPassed condition.
@@ -250,7 +250,7 @@ func (r *GpuReconciler) runPreflight(ctx context.Context, gpu *gpuv1beta1.Gpu) (
 // drives Helm. On failure it writes Preflight + HelmInstalled=False itself (so callers
 // don't need to) and returns a wrapped error. On success it returns the
 // HelmInstalled=True condition along with the chart version.
-func (r *GpuReconciler) installOrUpgrade(ctx context.Context, gpu *gpuv1beta1.Gpu, preflightCond *metav1.Condition, os detection.OSType) (metav1.Condition, string, error) {
+func (r *GpuReconciler) installOrUpgrade(ctx context.Context, gpu *gpuv1beta1.Gpu, preflightCond *metav1.Condition, osType detection.OSType) (metav1.Condition, string, error) {
 	logger := log.FromContext(ctx)
 
 	chartData, err := chart.GPUOperatorChart()
@@ -258,7 +258,7 @@ func (r *GpuReconciler) installOrUpgrade(ctx context.Context, gpu *gpuv1beta1.Gp
 		return metav1.Condition{}, "", fmt.Errorf("loading embedded chart: %w", err)
 	}
 
-	values, err := helm.BuildValues(gpu.Spec, helm.ClusterInfo{OS: os})
+	values, err := helm.BuildValues(gpu.Spec, helm.ClusterInfo{OS: osType})
 	if err != nil {
 		return metav1.Condition{}, "", fmt.Errorf("building helm values: %w", err)
 	}
