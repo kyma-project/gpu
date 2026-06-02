@@ -20,6 +20,7 @@ import (
 
 	gpuv1beta1 "github.com/kyma-project/gpu/api/v1beta1"
 	"github.com/kyma-project/gpu/internal/chart"
+	"github.com/kyma-project/gpu/internal/detection"
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
@@ -28,8 +29,9 @@ const nvidiaDriverRepo = "nvcr.io/nvidia"
 // ClusterInfo captures what the operator has detected about the cluster.
 // It is produced by the detection layer and consumed by BuildValues.
 type ClusterInfo struct {
-	// GardenLinux is true when all GPU nodes in the cluster run Garden Linux.
-	GardenLinux bool
+	// OS is the operating system running on all GPU nodes in the cluster.
+	// Preflight guarantees all GPU nodes share the same OS before BuildValues is called.
+	OS detection.OSType
 }
 
 // BuildValues translates the Gpu CR spec and detected cluster information into
@@ -37,11 +39,12 @@ type ClusterInfo struct {
 //
 // For Garden Linux clusters, the embedded gardenlinux.yaml is loaded as the base
 // (pre-compiled driver, CDI, toolkit path, NFD config) and user spec overrides are
-// applied on top. For other OS clusters, only spec overrides are applied.
+// applied on top. For Ubuntu clusters, NVIDIA's defaults are used (standard driver
+// image, compiled on node) with only spec overrides applied.
 func BuildValues(spec gpuv1beta1.GpuSpec, cluster ClusterInfo) (map[string]any, error) {
 	values := map[string]any{}
 
-	if cluster.GardenLinux {
+	if cluster.OS == detection.OSTypeGardenLinux {
 		base, err := gardenLinuxBase()
 		if err != nil {
 			return nil, err

@@ -6,7 +6,7 @@
 
 The GPU module manages the [NVIDIA GPU Operator](https://github.com/NVIDIA/gpu-operator) lifecycle on [SAP BTP, Kyma runtime](https://help.sap.com/docs/btp/sap-business-technology-platform/kyma-environment) clusters. It handles installation, upgrades, and health monitoring through a single `Gpu` custom resource.
 
-The operator embeds the NVIDIA GPU Operator Helm chart and Garden Linux driver values directly in the binary - no network access is needed during reconciliation. Pre-compiled drivers are applied automatically for Garden Linux nodes, skipping runtime kernel module compilation.
+The operator embeds the NVIDIA GPU Operator Helm chart and Garden Linux driver values directly in the binary - no network access is needed during reconciliation. Garden Linux clusters use pre-compiled drivers (no runtime kernel module compilation). Ubuntu clusters use standard NVIDIA images.
 
 ## Prerequisites
 
@@ -65,7 +65,7 @@ Status conditions reflect the current state:
 
 | Condition | Description |
 |---|---|
-| `Preflight` | Garden Linux GPU nodes detected and validated |
+| `Preflight` | GPU nodes detected and validated (supported OS: Garden Linux, Ubuntu) |
 | `HelmInstalled` | NVIDIA GPU Operator chart installed or upgraded |
 | `DriverReady` | NVIDIA driver DaemonSet has nodes ready |
 | `ValidatorPassed` | NVIDIA operator validator completed successfully |
@@ -105,7 +105,7 @@ Make sure `make chart-download && make values-download` have been run first so t
 
 This operator embeds the [NVIDIA GPU Operator](https://github.com/NVIDIA/gpu-operator) Helm chart in the binary via Go's `//go:embed`. No network access needed during reconciliation.
 
-For Garden Linux clusters, pre-compiled driver values are applied automatically (no runtime kernel module compilation). See [gardenlinux-nvidia-installer](https://github.com/gardenlinux/gardenlinux-nvidia-installer) for details.
+For Garden Linux clusters, pre-compiled driver values are applied automatically (no runtime kernel module compilation). For Ubuntu clusters, standard NVIDIA images are used. See [gardenlinux-nvidia-installer](https://github.com/gardenlinux/gardenlinux-nvidia-installer) for Garden Linux driver details.
 
 ### Paths
 

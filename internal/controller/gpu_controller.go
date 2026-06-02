@@ -159,13 +159,13 @@ func (r *GpuReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	}
 
 	// 1. preflight
-	preflightCond, result, err := r.runPreflight(ctx, gpu)
+	preflightCond, detectedOS, result, err := r.runPreflight(ctx, gpu)
 	if err != nil || preflightCond == nil {
 		return result, err
 	}
 
 	// 2. helm install or upgrade
-	helmCond, chartVersion, err := r.installOrUpgrade(ctx, gpu, preflightCond)
+	helmCond, chartVersion, err := r.installOrUpgrade(ctx, gpu, preflightCond, detectedOS)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -199,17 +199,17 @@ func (r *GpuReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 }
 
 // runPreflight evaluates the cluster's GPU-node OS state and returns the resulting
-// Preflight condition along with reconcile control flow.
+// Preflight condition, the detected OS type, and reconcile control flow.
 //
-// On Proceed it returns the True condition and zero result/err - the caller continues
+// On Proceed it returns the True condition and detected OS - the caller continues
 // with installation. On Warn or Error it writes the appropriate condition itself and
-// returns nil for the condition, signalling the caller to return the supplied result/err.
-func (r *GpuReconciler) runPreflight(ctx context.Context, gpu *gpuv1beta1.Gpu) (*metav1.Condition, ctrl.Result, error) {
+// returns nil for the condition, signaling the caller to return the supplied result/err.
+func (r *GpuReconciler) runPreflight(ctx context.Context, gpu *gpuv1beta1.Gpu) (*metav1.Condition, detection.OSType, ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	pre, err := detection.RunPreflight(ctx, r.Client)
 	if err != nil {
-		return nil, ctrl.Result{}, fmt.Errorf("running preflight: %w", err)
+		return nil, detection.OSTypeUnknown, ctrl.Result{}, fmt.Errorf("running preflight: %w", err)
 	}
 
 	switch pre.Outcome {
@@ -220,12 +220,12 @@ func (r *GpuReconciler) runPreflight(ctx context.Context, gpu *gpuv1beta1.Gpu) (
 				{Type: condPreflight, Status: metav1.ConditionUnknown, Reason: reasonWaiting, Message: pre.Reason},
 			},
 		}); err != nil {
-			return nil, ctrl.Result{}, err
+			return nil, detection.OSTypeUnknown, ctrl.Result{}, err
 		}
-		return nil, ctrl.Result{RequeueAfter: requeueWarn}, nil
+		return nil, detection.OSTypeUnknown, ctrl.Result{RequeueAfter: requeueWarn}, nil
 
 	case detection.OutcomeError:
-		// Hard blocker (e.g. non-Garden-Linux GPU nodes) - stop until user resolves it.
+		// Hard blocker - stop until user resolves it.
 		// No automatic requeue; the next reconcile is triggered by a CR or node change.
 		logger.Info("preflight error, stopping", "reason", pre.Reason)
 		if err := r.applyStatus(ctx, gpu.Name, statusUpdate{
@@ -233,33 +233,32 @@ func (r *GpuReconciler) runPreflight(ctx context.Context, gpu *gpuv1beta1.Gpu) (
 				{Type: condPreflight, Status: metav1.ConditionFalse, Reason: reasonFailed, Message: pre.Reason},
 			},
 		}); err != nil {
-			return nil, ctrl.Result{}, err
+			return nil, detection.OSTypeUnknown, ctrl.Result{}, err
 		}
-		return nil, ctrl.Result{}, nil
+		return nil, detection.OSTypeUnknown, ctrl.Result{}, nil
 	}
 
 	return &metav1.Condition{
 		Type:    condPreflight,
 		Status:  metav1.ConditionTrue,
 		Reason:  reasonPassed,
-		Message: "all GPU nodes are running Garden Linux",
-	}, ctrl.Result{}, nil
+		Message: fmt.Sprintf("all GPU nodes are running %s", pre.OS),
+	}, pre.OS, ctrl.Result{}, nil
 }
 
 // installOrUpgrade loads the embedded chart, builds values from the Gpu spec, and
 // drives Helm. On failure it writes Preflight + HelmInstalled=False itself (so callers
 // don't need to) and returns a wrapped error. On success it returns the
 // HelmInstalled=True condition along with the chart version.
-func (r *GpuReconciler) installOrUpgrade(ctx context.Context, gpu *gpuv1beta1.Gpu, preflightCond *metav1.Condition) (metav1.Condition, string, error) {
+func (r *GpuReconciler) installOrUpgrade(ctx context.Context, gpu *gpuv1beta1.Gpu, preflightCond *metav1.Condition, os detection.OSType) (metav1.Condition, string, error) {
 	logger := log.FromContext(ctx)
 
-	// Preflight guarantees Garden Linux, so always true here.
 	chartData, err := chart.GPUOperatorChart()
 	if err != nil {
 		return metav1.Condition{}, "", fmt.Errorf("loading embedded chart: %w", err)
 	}
 
-	values, err := helm.BuildValues(gpu.Spec, helm.ClusterInfo{GardenLinux: true})
+	values, err := helm.BuildValues(gpu.Spec, helm.ClusterInfo{OS: os})
 	if err != nil {
 		return metav1.Condition{}, "", fmt.Errorf("building helm values: %w", err)
 	}

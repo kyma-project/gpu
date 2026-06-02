@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	gpuv1beta1 "github.com/kyma-project/gpu/api/v1beta1"
+	"github.com/kyma-project/gpu/internal/detection"
 )
 
 func driverSpec(version string) *gpuv1beta1.DriverSpec {
@@ -39,7 +40,7 @@ func TestBuildValues(t *testing.T) {
 		{
 			name:              "garden linux - no driver version override uses embedded base",
 			spec:              gpuv1beta1.GpuSpec{},
-			cluster:           ClusterInfo{GardenLinux: true},
+			cluster:           ClusterInfo{OS: detection.OSTypeGardenLinux},
 			wantRepo:          "ghcr.io/gardenlinux/gardenlinux-nvidia-installer/1.8.0",
 			wantVersionAbsent: false,
 			wantVersion:       "590", // default from gardenlinux.yaml
@@ -48,7 +49,7 @@ func TestBuildValues(t *testing.T) {
 		{
 			name:             "garden linux - spec version overrides embedded base default",
 			spec:             gpuv1beta1.GpuSpec{Driver: driverSpec("595")},
-			cluster:          ClusterInfo{GardenLinux: true},
+			cluster:          ClusterInfo{OS: detection.OSTypeGardenLinux},
 			wantRepo:         "ghcr.io/gardenlinux/gardenlinux-nvidia-installer/1.8.0",
 			wantVersion:      "595",
 			wantTopLevelKeys: []string{"cdi", "toolkit", "node-feature-discovery"},
@@ -56,36 +57,36 @@ func TestBuildValues(t *testing.T) {
 		{
 			name:             "garden linux - nil driver spec uses embedded base default",
 			spec:             gpuv1beta1.GpuSpec{Driver: nil},
-			cluster:          ClusterInfo{GardenLinux: true},
+			cluster:          ClusterInfo{OS: detection.OSTypeGardenLinux},
 			wantRepo:         "ghcr.io/gardenlinux/gardenlinux-nvidia-installer/1.8.0",
 			wantVersion:      "590",
 			wantTopLevelKeys: []string{"cdi", "toolkit", "node-feature-discovery"},
 		},
 		{
-			name:              "ubuntu - no driver version override",
+			name:              "ubuntu - no driver version override uses NVIDIA defaults",
 			spec:              gpuv1beta1.GpuSpec{},
-			cluster:           ClusterInfo{GardenLinux: false},
+			cluster:           ClusterInfo{OS: detection.OSTypeUbuntu},
 			wantRepo:          nvidiaDriverRepo,
 			wantVersionAbsent: true,
 		},
 		{
 			name:        "ubuntu - with driver version override",
 			spec:        gpuv1beta1.GpuSpec{Driver: driverSpec("535.129.03")},
-			cluster:     ClusterInfo{GardenLinux: false},
+			cluster:     ClusterInfo{OS: detection.OSTypeUbuntu},
 			wantRepo:    nvidiaDriverRepo,
 			wantVersion: "535.129.03",
 		},
 		{
 			name:              "ubuntu - nil driver spec",
 			spec:              gpuv1beta1.GpuSpec{Driver: nil},
-			cluster:           ClusterInfo{GardenLinux: false},
+			cluster:           ClusterInfo{OS: detection.OSTypeUbuntu},
 			wantRepo:          nvidiaDriverRepo,
 			wantVersionAbsent: true,
 		},
 		{
 			name:              "ubuntu - empty version string treated as absent",
 			spec:              gpuv1beta1.GpuSpec{Driver: driverSpec("")},
-			cluster:           ClusterInfo{GardenLinux: false},
+			cluster:           ClusterInfo{OS: detection.OSTypeUbuntu},
 			wantRepo:          nvidiaDriverRepo,
 			wantVersionAbsent: true,
 		},

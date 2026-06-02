@@ -132,9 +132,9 @@ var _ = Describe("GpuReconciler", func() {
 			Expect(getCondition(gpuName, condReady)).To(BeNil())
 		})
 
-		It("sets Preflight=False without requeue when a GPU node runs a non-Garden-Linux OS", func() {
-			newGpuNode("gpu-node-ubuntu", "g4dn.xlarge", "Ubuntu 22.04")
-			DeferCleanup(deleteNode, "gpu-node-ubuntu")
+		It("sets Preflight=False without requeue when a GPU node runs an unsupported OS", func() {
+			newGpuNode("gpu-node-unsupported", "g4dn.xlarge", "Fedora CoreOS 38")
+			DeferCleanup(deleteNode, "gpu-node-unsupported")
 
 			result, err := reconciler.Reconcile(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
@@ -144,7 +144,7 @@ var _ = Describe("GpuReconciler", func() {
 			Expect(cond).NotTo(BeNil())
 			Expect(cond.Status).To(Equal(metav1.ConditionFalse))
 			Expect(cond.Reason).To(Equal(reasonFailed))
-			Expect(cond.Message).To(ContainSubstring("not running Garden Linux"))
+			Expect(cond.Message).To(ContainSubstring("unsupported OS"))
 
 			Expect(installer.installCalls).To(Equal(0))
 		})

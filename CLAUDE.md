@@ -57,7 +57,7 @@ There is no `State` enum field on the CRD. State is communicated exclusively thr
 Reconcile flow (happy path):
 1. Singleton guard: rejects any CR not named `"gpu"` with `Ready=False`
 2. Add finalizer on first reconcile (return; watch event re-triggers)
-3. Run `detection.RunPreflight` — OutcomeWarn → set `Preflight=Unknown`, requeue 30s; OutcomeError → set `Preflight=False`, return with no requeue (self-heals via Node watch); OutcomeProceed → set `Preflight=True`, continue
+3. Run `detection.RunPreflight` — OutcomeWarn → set `Preflight=Unknown`, requeue 30s; OutcomeError → set `Preflight=False`, return with no requeue (self-heals via Node watch); OutcomeProceed → set `Preflight=True`, capture detected `OSType`, continue
 4. Load embedded chart bytes via `chart.GPUOperatorChart()` + build Helm values via `helm.BuildValues`
 5. Call `Installer.InstallOrUpgrade` — on success sets `HelmInstalled=True` and records `operatorVersion`; on failure sets `HelmInstalled=False`
 6. Read `nvidia-driver-daemonset` DaemonSet(s) status counters → set `DriverReady` condition (aggregates across multiple DaemonSets for mixed-kernel clusters)
@@ -82,11 +82,11 @@ All conditions use the tri-state (`True` / `False` / `Unknown`). `False` means d
 
 ### Helm Layer (`internal/helm/`)
 - `Installer` is an interface (`interface.go`) with `InstallOrUpgrade` and `Uninstall`. The concrete type is `Client` (`installer.go`), which wraps Helm v3 SDK `action.Configuration` with Kubernetes secrets as the storage backend. Tests inject a `fakeInstaller`.
-- `BuildValues(spec, ClusterInfo)` merges the embedded Garden Linux base values with user spec overrides. `ClusterInfo.GardenLinux` is always `true` in production (preflight guarantees it).
+- `BuildValues(spec, ClusterInfo)` merges the embedded Garden Linux base values with user spec overrides for Garden Linux clusters. For Ubuntu clusters, NVIDIA defaults are used (no base values file). `ClusterInfo.OS` is set by preflight and is always a supported `OSType` when `BuildValues` is called.
 
 ### Detection (`internal/detection/`)
 - `IsGPUNode(labels)` checks `node.kubernetes.io/instance-type` (exported as `detection.InstanceTypeLabel`) against known GPU prefixes (AWS g4dn/g6, GCP g2-, Azure Standard_NC).
-- `RunPreflight` returns Proceed/Warn/Error: no GPU nodes → Warn; any non-Garden-Linux GPU node → Error.
+- `RunPreflight` returns Proceed/Warn/Error: no GPU nodes → Warn; any GPU node with unsupported OS → Error; mixed OS types across GPU nodes → Error; all GPU nodes on same supported OS → Proceed with detected `OSType` (`OSTypeGardenLinux` or `OSTypeUbuntu`). OS is detected from `node.Status.NodeInfo.OSImage` (case-insensitive substring match).
 
 ### Embedded Artifacts
 `internal/chart/gpu-operator/*.tgz` and `internal/chart/values/gardenlinux.yaml` are embedded via `//go:embed`. They must exist before building; `make chart-download` and `make values-download` fetch them. The `build` target runs `chart-verify` to guard against missing files.
@@ -104,7 +104,7 @@ Two styles are used deliberately:
 Run configuration: **Go Build**, kind = **Package**, package path = `github.com/kyma-project/gpu/cmd`. Set `KUBECONFIG` env var to your cluster kubeconfig. The controller will connect to the remote cluster and begin reconciling immediately.
 
 ## Key Constraints
-- Only Garden Linux nodes are supported for GPU workloads (v1 scope). Non-Garden-Linux GPU nodes → `Preflight=False`, no automatic requeue — but the Node watch self-heals when the node is replaced or its OS image changes.
+- Garden Linux and Ubuntu nodes are supported. All GPU nodes must run the same OS — mixed clusters are rejected at preflight (`Preflight=False`). Non-Garden-Linux, non-Ubuntu GPU nodes → `Preflight=False`, no automatic requeue — but the Node watch self-heals when the node is replaced or its OS image changes.
 - The embedded chart must be `.tgz` files in `internal/chart/gpu-operator/`. If multiple versions exist, `chart.GPUOperatorChart()` picks the highest semver.
 - RBAC markers in `gpu_controller.go` are explicit per-resource grants (no wildcard `*/*`). `make manifests` regenerates `config/rbac/role.yaml` from these markers. `make test-rbac` verifies coverage after chart upgrades.
 - Singleton enforcement is dual-layered: a CEL validation rule on the CRD rejects non-`"gpu"` names at admission, and the controller also rejects them at reconcile time as defense-in-depth.

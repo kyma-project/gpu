@@ -62,6 +62,7 @@ func TestRunPreflight(t *testing.T) {
 		name        string
 		nodes       []runtime.Object
 		wantOutcome Outcome
+		wantOS      OSType // only checked on OutcomeProceed
 	}{
 		{
 			name:        "no nodes at all - warn",
@@ -81,6 +82,7 @@ func TestRunPreflight(t *testing.T) {
 				systemNode("system-1"),
 			},
 			wantOutcome: OutcomeProceed,
+			wantOS:      OSTypeGardenLinux,
 		},
 		{
 			name: "GPU nodes all Garden Linux GCP - proceed",
@@ -88,19 +90,29 @@ func TestRunPreflight(t *testing.T) {
 				gpuNode("gpu-1", "g2-standard-8", "Garden Linux 1592.1"),
 			},
 			wantOutcome: OutcomeProceed,
+			wantOS:      OSTypeGardenLinux,
 		},
 		{
-			name: "GPU node running Ubuntu - error",
+			name: "GPU nodes all Ubuntu - proceed",
 			nodes: []runtime.Object{
-				gpuNode("gpu-1", "g4dn.xlarge", "Ubuntu 22.04"),
+				gpuNode("gpu-1", "g4dn.xlarge", "Ubuntu 22.04 LTS"),
+				gpuNode("gpu-2", "g6.xlarge", "Ubuntu 22.04 LTS"),
+			},
+			wantOutcome: OutcomeProceed,
+			wantOS:      OSTypeUbuntu,
+		},
+		{
+			name: "GPU node running unknown OS - error",
+			nodes: []runtime.Object{
+				gpuNode("gpu-1", "g4dn.xlarge", "Fedora CoreOS 38"),
 			},
 			wantOutcome: OutcomeError,
 		},
 		{
-			name: "mixed GPU nodes - some Garden Linux, some Ubuntu - error",
+			name: "mixed GPU nodes - Garden Linux and Ubuntu - error",
 			nodes: []runtime.Object{
 				gpuNode("gpu-1", "g4dn.xlarge", "Garden Linux 1592.1"),
-				gpuNode("gpu-2", "g6.xlarge", "Ubuntu 22.04"),
+				gpuNode("gpu-2", "g6.xlarge", "Ubuntu 22.04 LTS"),
 			},
 			wantOutcome: OutcomeError,
 		},
@@ -111,6 +123,7 @@ func TestRunPreflight(t *testing.T) {
 				gpuNode("gpu-1", "g4dn.xlarge", "Garden Linux 1592.1"),
 			},
 			wantOutcome: OutcomeProceed,
+			wantOS:      OSTypeGardenLinux,
 		},
 	}
 
@@ -124,6 +137,9 @@ func TestRunPreflight(t *testing.T) {
 			if result.Outcome != tt.wantOutcome {
 				t.Errorf("RunPreflight() outcome = %v, want %v; reason: %q",
 					result.Outcome, tt.wantOutcome, result.Reason)
+			}
+			if tt.wantOutcome == OutcomeProceed && result.OS != tt.wantOS {
+				t.Errorf("RunPreflight() OS = %q, want %q", result.OS, tt.wantOS)
 			}
 		})
 	}
