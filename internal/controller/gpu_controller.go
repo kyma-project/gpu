@@ -94,6 +94,7 @@ type GpuReconciler struct {
 // +kubebuilder:rbac:groups=gpu.kyma-project.io,resources=gpus/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=gpu.kyma-project.io,resources=gpus/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;delete
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=serviceaccounts;configmaps,verbs=get;list;watch;create;update;patch;delete
@@ -318,6 +319,22 @@ func (r *GpuReconciler) reconcileDelete(ctx context.Context, gpu *gpuv1beta1.Gpu
 		logger.Error(err, "failed to update status before uninstall, continuing")
 	}
 
+	// Block deletion if user workloads are still consuming GPU resources.
+	active, err := r.detectActiveGPUWorkloads(ctx)
+	if err != nil {
+		logger.Error(err, "failed to check for active GPU workloads, proceeding with uninstall")
+	} else if len(active) > 0 {
+		msg := fmt.Sprintf("deletion blocked: %d pod(s) are actively using GPU resources: %v; delete or wait for these workloads to complete before removing GPU support", len(active), active)
+		if statusErr := r.applyStatus(ctx, gpu.Name, statusUpdate{
+			conditions: []metav1.Condition{
+				{Type: condWorkloadProtection, Status: metav1.ConditionFalse, Reason: reasonActiveWorkloads, Message: msg},
+			},
+		}); statusErr != nil {
+			logger.Error(statusErr, "failed to update WorkloadProtection status")
+		}
+		return ctrl.Result{RequeueAfter: requeueWarn}, nil
+	}
+
 	// Uninstall is idempotent - returns nil if the release is already gone.
 	if err := r.Installer.Uninstall(ctx, deleteTimeout); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -516,6 +533,59 @@ func driverVersionFromDaemonSet(ds *appsv1.DaemonSet) string {
 		return before
 	}
 	return tag
+}
+
+// gpuResourcePrefixes lists the Kubernetes extended resource names used by the NVIDIA
+// device plugin. All supported instance types (g4dn, g6, g2-, Standard_NC) use T4/L4/A10
+// GPUs which expose nvidia.com/gpu only. When MIG support is added (requires A100/H100),
+// add "nvidia.com/mig-*" to this list to cover MIG partition resources (e.g. nvidia.com/mig-1g.5gb).
+var gpuResourcePrefixes = []string{"nvidia.com/gpu"}
+
+// detectActiveGPUWorkloads returns the namespace/name of every Running or Pending pod
+// (outside the gpu-operator namespace) that has a GPU resource request. An error listing
+// pods is treated as best-effort - the caller logs it and continues.
+func (r *GpuReconciler) detectActiveGPUWorkloads(ctx context.Context) ([]string, error) {
+	podList := &corev1.PodList{}
+	if err := r.List(ctx, podList); err != nil {
+		return nil, fmt.Errorf("listing pods: %w", err)
+	}
+
+	var active []string
+	for _, pod := range podList.Items {
+		if pod.Namespace == gpuOperatorNamespace {
+			continue
+		}
+		if pod.DeletionTimestamp != nil {
+			// Pod is already terminating - the GPU device will be released once it stops.
+			continue
+		}
+		if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodPending {
+			continue
+		}
+		if podRequestsGPU(pod) {
+			active = append(active, fmt.Sprintf("%s/%s", pod.Namespace, pod.Name))
+		}
+	}
+	return active, nil
+}
+
+// podRequestsGPU returns true if any regular or init container in the pod requests
+// a GPU resource (nvidia.com/gpu). MIG variants are not checked — no supported instance
+// type offers MIG-capable hardware.
+func podRequestsGPU(pod corev1.Pod) bool {
+	for _, containers := range [][]corev1.Container{pod.Spec.Containers, pod.Spec.InitContainers} {
+		for _, c := range containers {
+			for resourceName := range c.Resources.Limits {
+				name := string(resourceName)
+				for _, prefix := range gpuResourcePrefixes {
+					if strings.HasPrefix(name, prefix) {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
 }
 
 // SetupWithManager registers the controller and wires up watches on Nodes and

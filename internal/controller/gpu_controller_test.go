@@ -25,6 +25,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -573,6 +574,126 @@ var _ = Describe("GpuReconciler", func() {
 			_, err := reconciler.Reconcile(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
 		})
+
+		It("blocks deletion when a Running pod requests nvidia.com/gpu", func() {
+			pod := newGPUPod("workload-running", "default", corev1.ResourceList{
+				"nvidia.com/gpu": resource.MustParse("1"),
+			}, nil, corev1.PodRunning)
+			DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod) })
+
+			gpu := &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, gpu)).To(Succeed())
+
+			result, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RequeueAfter).To(Equal(requeueWarn), "workload block must requeue, not error")
+
+			// Finalizer must still be present so the CR is not garbage-collected.
+			live := &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, live)).To(Succeed())
+			Expect(live.Finalizers).To(ContainElement(finalizer))
+			Expect(installer.uninstallCalled).To(BeFalse())
+
+			cond := getCondition(gpuName, condWorkloadProtection)
+			Expect(cond).NotTo(BeNil())
+			Expect(cond.Status).To(Equal(metav1.ConditionFalse))
+			Expect(cond.Reason).To(Equal(reasonActiveWorkloads))
+			Expect(cond.Message).To(ContainSubstring("default/workload-running"))
+		})
+
+		It("blocks deletion when a Pending pod requests nvidia.com/gpu", func() {
+			pod := newGPUPod("workload-pending", "default", corev1.ResourceList{
+				"nvidia.com/gpu": resource.MustParse("1"),
+			}, nil, corev1.PodPending)
+			DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod) })
+
+			gpu := &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, gpu)).To(Succeed())
+
+			result, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RequeueAfter).To(Equal(requeueWarn))
+			Expect(installer.uninstallCalled).To(BeFalse())
+		})
+
+		It("blocks deletion when an init container requests nvidia.com/gpu", func() {
+			pod := newGPUPod("workload-init", "default", nil, corev1.ResourceList{
+				"nvidia.com/gpu": resource.MustParse("1"),
+			}, corev1.PodRunning)
+			DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod) })
+
+			gpu := &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, gpu)).To(Succeed())
+
+			result, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RequeueAfter).To(Equal(requeueWarn))
+			Expect(installer.uninstallCalled).To(BeFalse())
+		})
+
+		It("allows deletion when a GPU pod is terminating (DeletionTimestamp set)", func() {
+			pod := newGPUPod("workload-terminating", "default", corev1.ResourceList{
+				"nvidia.com/gpu": resource.MustParse("1"),
+			}, nil, corev1.PodRunning)
+			// Simulate termination by deleting the pod - DeletionTimestamp will be set.
+			Expect(k8sClient.Delete(ctx, pod)).To(Succeed())
+			DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod) })
+
+			gpu := &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, gpu)).To(Succeed())
+
+			_, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(installer.uninstallCalled).To(BeTrue(), "terminating pods must not block GPU operator deletion")
+		})
+
+		It("allows deletion when GPU pods have already Succeeded", func() {
+			pod := newGPUPod("workload-done", "default", corev1.ResourceList{
+				"nvidia.com/gpu": resource.MustParse("1"),
+			}, nil, corev1.PodSucceeded)
+			DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod) })
+
+			gpu := &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, gpu)).To(Succeed())
+
+			_, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(installer.uninstallCalled).To(BeTrue())
+		})
+
+		It("allows deletion when no pods request GPU resources", func() {
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "non-gpu-pod", Namespace: "default"},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Name: "app", Image: "busybox"}},
+				},
+			}
+			Expect(k8sClient.Create(ctx, pod)).To(Succeed())
+			DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod) })
+
+			gpu := &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, gpu)).To(Succeed())
+
+			_, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(installer.uninstallCalled).To(BeTrue())
+		})
+
+		It("allows deletion with no GPU pods present (gpu-operator namespace exclusion covered in unit test)", func() {
+			gpu := &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, gpu)).To(Succeed())
+
+			_, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(installer.uninstallCalled).To(BeTrue())
+		})
 	})
 })
 
@@ -645,4 +766,33 @@ func deleteClusterPolicy(name string) {
 		return
 	}
 	_ = k8sClient.Delete(ctx, cp)
+}
+
+// newGPUPod creates a pod in the given namespace with GPU resource limits on its
+// main container (containerLimits) and/or its init container (initLimits). Pass nil
+// to skip creating that container type. The pod's status.phase is patched after creation.
+func newGPUPod(name, namespace string, containerLimits, initLimits corev1.ResourceList, phase corev1.PodPhase) *corev1.Pod {
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name:  "app",
+				Image: "busybox",
+			}},
+		},
+	}
+	if containerLimits != nil {
+		pod.Spec.Containers[0].Resources = corev1.ResourceRequirements{Limits: containerLimits}
+	}
+	if initLimits != nil {
+		pod.Spec.InitContainers = []corev1.Container{{
+			Name:      "init",
+			Image:     "busybox",
+			Resources: corev1.ResourceRequirements{Limits: initLimits},
+		}}
+	}
+	Expect(k8sClient.Create(ctx, pod)).To(Succeed())
+	pod.Status.Phase = phase
+	Expect(k8sClient.Status().Update(ctx, pod)).To(Succeed())
+	return pod
 }
