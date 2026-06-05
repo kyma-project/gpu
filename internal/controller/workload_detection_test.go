@@ -25,8 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func gpuLimits(name string) corev1.ResourceList {
-	return corev1.ResourceList{corev1.ResourceName(name): resource.MustParse("1")}
+func gpuLimits() corev1.ResourceList {
+	return corev1.ResourceList{"nvidia.com/gpu": resource.MustParse("1")}
 }
 
 func TestPodRequestsGPU(t *testing.T) {
@@ -39,7 +39,7 @@ func TestPodRequestsGPU(t *testing.T) {
 			name: "regular container with nvidia.com/gpu",
 			pod: corev1.Pod{Spec: corev1.PodSpec{
 				Containers: []corev1.Container{{
-					Resources: corev1.ResourceRequirements{Limits: gpuLimits("nvidia.com/gpu")},
+					Resources: corev1.ResourceRequirements{Limits: gpuLimits()},
 				}},
 			}},
 			want: true,
@@ -49,7 +49,7 @@ func TestPodRequestsGPU(t *testing.T) {
 			pod: corev1.Pod{Spec: corev1.PodSpec{
 				Containers: []corev1.Container{{Name: "app", Image: "busybox"}},
 				InitContainers: []corev1.Container{{
-					Resources: corev1.ResourceRequirements{Limits: gpuLimits("nvidia.com/gpu")},
+					Resources: corev1.ResourceRequirements{Limits: gpuLimits()},
 				}},
 			}},
 			want: true,
@@ -99,7 +99,7 @@ func TestDetectActiveGPUWorkloads_NamespaceExclusion(t *testing.T) {
 			Containers: []corev1.Container{{
 				Name:      "driver",
 				Image:     "nvcr.io/nvidia/driver:latest",
-				Resources: corev1.ResourceRequirements{Limits: gpuLimits("nvidia.com/gpu")},
+				Resources: corev1.ResourceRequirements{Limits: gpuLimits()},
 			}},
 		},
 		Status: corev1.PodStatus{Phase: corev1.PodRunning},
@@ -135,7 +135,7 @@ func TestDetectActiveGPUWorkloads_TerminatingPodExclusion(t *testing.T) {
 			Containers: []corev1.Container{{
 				Name:      "trainer",
 				Image:     "pytorch:latest",
-				Resources: corev1.ResourceRequirements{Limits: gpuLimits("nvidia.com/gpu")},
+				Resources: corev1.ResourceRequirements{Limits: gpuLimits()},
 			}},
 		},
 		Status: corev1.PodStatus{Phase: corev1.PodRunning},

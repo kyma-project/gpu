@@ -576,7 +576,7 @@ var _ = Describe("GpuReconciler", func() {
 		})
 
 		It("blocks deletion when a Running pod requests nvidia.com/gpu", func() {
-			pod := newGPUPod("workload-running", "default", corev1.ResourceList{
+			pod := newGPUPod("workload-running", corev1.ResourceList{
 				"nvidia.com/gpu": resource.MustParse("1"),
 			}, nil, corev1.PodRunning)
 			DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod) })
@@ -603,7 +603,7 @@ var _ = Describe("GpuReconciler", func() {
 		})
 
 		It("blocks deletion when a Pending pod requests nvidia.com/gpu", func() {
-			pod := newGPUPod("workload-pending", "default", corev1.ResourceList{
+			pod := newGPUPod("workload-pending", corev1.ResourceList{
 				"nvidia.com/gpu": resource.MustParse("1"),
 			}, nil, corev1.PodPending)
 			DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod) })
@@ -619,7 +619,7 @@ var _ = Describe("GpuReconciler", func() {
 		})
 
 		It("blocks deletion when an init container requests nvidia.com/gpu", func() {
-			pod := newGPUPod("workload-init", "default", nil, corev1.ResourceList{
+			pod := newGPUPod("workload-init", nil, corev1.ResourceList{
 				"nvidia.com/gpu": resource.MustParse("1"),
 			}, corev1.PodRunning)
 			DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod) })
@@ -635,7 +635,7 @@ var _ = Describe("GpuReconciler", func() {
 		})
 
 		It("allows deletion when a GPU pod is terminating (DeletionTimestamp set)", func() {
-			pod := newGPUPod("workload-terminating", "default", corev1.ResourceList{
+			pod := newGPUPod("workload-terminating", corev1.ResourceList{
 				"nvidia.com/gpu": resource.MustParse("1"),
 			}, nil, corev1.PodRunning)
 			// Simulate termination by deleting the pod - DeletionTimestamp will be set.
@@ -652,7 +652,7 @@ var _ = Describe("GpuReconciler", func() {
 		})
 
 		It("allows deletion when GPU pods have already Succeeded", func() {
-			pod := newGPUPod("workload-done", "default", corev1.ResourceList{
+			pod := newGPUPod("workload-done", corev1.ResourceList{
 				"nvidia.com/gpu": resource.MustParse("1"),
 			}, nil, corev1.PodSucceeded)
 			DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod) })
@@ -768,12 +768,12 @@ func deleteClusterPolicy(name string) {
 	_ = k8sClient.Delete(ctx, cp)
 }
 
-// newGPUPod creates a pod in the given namespace with GPU resource limits on its
+// newGPUPod creates a pod in the default namespace with GPU resource limits on its
 // main container (containerLimits) and/or its init container (initLimits). Pass nil
 // to skip creating that container type. The pod's status.phase is patched after creation.
-func newGPUPod(name, namespace string, containerLimits, initLimits corev1.ResourceList, phase corev1.PodPhase) *corev1.Pod {
+func newGPUPod(name string, containerLimits, initLimits corev1.ResourceList, phase corev1.PodPhase) *corev1.Pod {
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{{
 				Name:  "app",
