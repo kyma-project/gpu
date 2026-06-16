@@ -570,7 +570,7 @@ func (r *GpuReconciler) detectActiveGPUWorkloads(ctx context.Context) ([]string,
 }
 
 // podRequestsGPU returns true if any regular or init container in the pod requests
-// a GPU resource (nvidia.com/gpu). MIG variants are not checked — no supported instance
+// a GPU resource (nvidia.com/gpu). MIG variants are not checked - no supported instance
 // type offers MIG-capable hardware.
 func podRequestsGPU(pod corev1.Pod) bool {
 	for _, containers := range [][]corev1.Container{pod.Spec.Containers, pod.Spec.InitContainers} {

@@ -32,3 +32,6 @@ go.work
 **/.DS_Store
 /*.log
 /output
+
+# Rendered installer manifests (output of `make build-installer`, attached to releases)
+/dist/

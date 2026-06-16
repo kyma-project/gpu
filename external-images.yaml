@@ -1,0 +1,31 @@
+images:
+  # NVIDIA GPU Operator (also used as validator and node-status-exporter image)
+  - source: "nvcr.io/nvidia/gpu-operator:v26.3.2"
+
+  # NVIDIA driver (Ubuntu) - replaced by Garden Linux precompiled installer on GL clusters
+  - source: "nvcr.io/nvidia/driver:580.126.20"
+
+  # Garden Linux precompiled NVIDIA driver - used in place of nvcr.io/nvidia/driver
+  # Tag format: <driver-branch>-<kernel>-gardenlinux0. The installer-release segment
+  # in the path (currently 1.10.0) and driver branch (currently 590) are pinned by
+  # internal/chart/values/gardenlinux.yaml. The kernel segment reflects what GL nodes
+  # in the fleet currently run; refresh on kernel or values bumps.
+  - source: "ghcr.io/gardenlinux/gardenlinux-nvidia-installer/1.10.0/driver:590-6.18.28-cloud-amd64-gardenlinux0"
+
+  # k8s-driver-manager - init container in driver pod
+  - source: "nvcr.io/nvidia/cloud-native/k8s-driver-manager:v0.11.0"
+
+  # Container Toolkit - wires NVIDIA runtime into containerd
+  - source: "nvcr.io/nvidia/k8s/container-toolkit:v1.19.1"
+
+  # Device Plugin - exposes nvidia.com/gpu (also used by GPU Feature Discovery)
+  - source: "nvcr.io/nvidia/k8s-device-plugin:v0.19.2"
+
+  # DCGM Exporter - Prometheus-format metrics on port 9400
+  - source: "nvcr.io/nvidia/k8s/dcgm-exporter:4.5.3-4.8.2-distroless"
+
+  # MIG Manager - multi-instance GPU partitioning
+  - source: "nvcr.io/nvidia/cloud-native/k8s-mig-manager:v0.14.2"
+
+  # Node Feature Discovery (bundled subchart)
+  - source: "registry.k8s.io/nfd/node-feature-discovery:v0.18.3"

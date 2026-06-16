@@ -46,7 +46,7 @@ make deploy IMG=<image>
 This is a Kubernetes operator (Kubebuilder v4) that manages the NVIDIA GPU Operator lifecycle on Kyma clusters.
 
 ### CRD: `Gpu` (`api/v1beta1/`)
-Cluster-scoped singleton resource. Spec allows an optional override for driver version (`spec.driver.version`). Status tracks `operatorVersion`, `driver.version`, `driver.nodesReady`, and five conditions.
+Cluster-scoped singleton resource. Spec allows an optional override for driver version (`spec.driver.version`). Status tracks `operatorVersion`, `driver.version`, `driver.nodesReady`, and a set of conditions.
 
 There is no `State` enum field on the CRD. State is communicated exclusively through the conditions system described below.
 
@@ -71,12 +71,14 @@ Watches:
 - `DaemonSet` objects via `driverDaemonSetPredicate` — fires only for DaemonSets with label `app=nvidia-driver-daemonset` in the `gpu-operator` namespace, so driver rollout state transitions trigger reconciliation.
 
 ### Condition System (`internal/controller/conditions.go`)
-Five stable condition types: `Preflight`, `HelmInstalled`, `DriverReady`, `ValidatorPassed`, `Ready`.
+Six condition types: `Preflight`, `HelmInstalled`, `DriverReady`, `ValidatorPassed`, `WorkloadProtection`, `Ready`.
 
-The first four are **inputs** written by `GpuReconciler`. `Ready` is a **computed summary** derived by `computeReadySummary`:
+The first four are **inputs** written by `GpuReconciler` during the install/upgrade reconcile. `Ready` is a **computed summary** derived by `computeReadySummary`:
 - Any input is `False` → `Ready=False` (definitively broken)
 - Any input is `Unknown` or absent → `Ready=Unknown` (still converging)
 - All four are `True` → `Ready=True`
+
+`WorkloadProtection` is set independently during deletion (`reconcileDelete`) when GPU pods are still active and is not an input to `Ready`.
 
 All conditions use the tri-state (`True` / `False` / `Unknown`). `False` means definitively broken and requires user action. `Unknown` means still converging.
 

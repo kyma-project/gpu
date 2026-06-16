@@ -31,3 +31,15 @@ path = "**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 SAP SE or an SAP affiliate company and gpu contributors"
 SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "internal/chart/gpu-operator/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2021 NVIDIA Corporation"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "internal/chart/values/gardenlinux.yaml"
+precedence = "override"
+SPDX-FileCopyrightText = "SAP SE or an SAP affiliate company (Garden Linux contributors)"
+SPDX-License-Identifier = "Apache-2.0"
