@@ -1,5 +1,5 @@
 # Default owners of the `gpu` repository
-* @kyma-project/gpu
+* @kyma-project/Phoenix
 
 # All files and subdirectories in /docs/user/
 /docs/user/ @kyma-project/technical-writers
