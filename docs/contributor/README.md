@@ -6,6 +6,7 @@ Engineering documentation for the GPU module operator.
 
 - [Architecture](./architecture.md) - controller design, conditions, embedded chart
 - [Local setup](./local-setup.md) - running the operator against a real cluster
+- [E2E testing](./e2e-testing.md) - shape and prerequisites of the e2e suite
 - [Releasing](./releasing.md) - release workflow and module submission
 
 ## Contributing

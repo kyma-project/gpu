@@ -1,0 +1,6 @@
+apiVersion: nvidia.com/v1
+items: []
+kind: ClusterPolicyList
+metadata:
+  continue: ""
+  resourceVersion: "21856"

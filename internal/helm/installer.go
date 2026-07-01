@@ -72,11 +72,13 @@ func (c *Client) InstallOrUpgrade(ctx context.Context, chartData []byte, values 
 	return upgrade(ctx, cfg, chrt, values)
 }
 
-// Uninstall removes the NVIDIA GPU Operator Helm release. It waits for pods to
-// terminate up to timeout so a rapid reinstall does not race with the old driver unloading.
-// ctx cancellation is not honored: Helm's action.Uninstall.Run does not accept a context,
-// so the call blocks until the driver pods are gone or u.Timeout expires.
-func (c *Client) Uninstall(_ context.Context, timeout time.Duration) error {
+// Uninstall removes the NVIDIA GPU Operator Helm release without waiting for
+// pods to terminate. Pod cleanup is handled by the caller via foreground
+// namespace deletion, which blocks until all child resources are gone before
+// the namespace itself disappears. Waiting here as well caused Helm to block
+// for 15+ minutes on real GPU hardware (driver pods take that long to
+// terminate), and Helm's u.Timeout was not reliably honored.
+func (c *Client) Uninstall(_ context.Context, _ time.Duration) error {
 	cfg, err := c.actionConfig()
 	if err != nil {
 		return err
@@ -91,8 +93,7 @@ func (c *Client) Uninstall(_ context.Context, timeout time.Duration) error {
 	}
 
 	u := action.NewUninstall(cfg)
-	u.Wait = true
-	u.Timeout = timeout
+	u.Wait = false
 	if _, err := u.Run(releaseName); err != nil {
 		return fmt.Errorf("uninstalling gpu-operator: %w", err)
 	}

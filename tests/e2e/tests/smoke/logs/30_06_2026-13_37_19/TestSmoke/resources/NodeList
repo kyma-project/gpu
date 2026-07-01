@@ -1,0 +1,2231 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Node
+  metadata:
+    annotations:
+      checksum/cloud-config-data: 68341e4cce18130e64511c12367c02f710859eab03b83c39a7503bbc6f9724fb
+      csi.volume.kubernetes.io/nodeid: '{"ebs.csi.aws.com":"i-006e276e6b9564c6a"}'
+      node-agent.gardener.cloud/reconciliation-delay: 0s
+      node.alpha.kubernetes.io/ttl: "0"
+      node.machine.sapcloud.io/last-applied-anno-labels-taints: '{"metadata":{"labels":{"kubernetes.io/arch":"amd64","networking.gardener.cloud/node-local-dns-enabled":"true","node.kubernetes.io/role":"node","topology.ebs.csi.aws.com/zone":"eu-central-1b","topology.kubernetes.io/zone":"eu-central-1b","worker.garden.sapcloud.io/group":"cpu-worker-0","worker.gardener.cloud/cri-name":"containerd","worker.gardener.cloud/gardener-node-agent-secret-name":"gardener-node-agent-cpu-worker-0-3bc222209ba548f5","worker.gardener.cloud/pool":"cpu-worker-0","worker.gardener.cloud/system-components":"true"}},"spec":{}}'
+      volumes.kubernetes.io/controller-managed-attach-detach: "true"
+    creationTimestamp: "2026-06-30T11:29:54Z"
+    finalizers:
+    - node.machine.sapcloud.io/machine-controller
+    labels:
+      beta.kubernetes.io/arch: amd64
+      beta.kubernetes.io/instance-type: m7i.xlarge
+      beta.kubernetes.io/os: linux
+      failure-domain.beta.kubernetes.io/region: eu-central-1
+      failure-domain.beta.kubernetes.io/zone: eu-central-1b
+      kubernetes.io/arch: amd64
+      kubernetes.io/hostname: ip-10-250-152-124.eu-central-1.compute.internal
+      kubernetes.io/os: linux
+      networking.gardener.cloud/node-local-dns-enabled: "true"
+      node-role.kubernetes.io/worker: ""
+      node.gardener.cloud/machine-name: shoot--kyma-dev--db24d09-cpu-worker-0-z3-58594-4wm2f
+      node.kubernetes.io/instance-type: m7i.xlarge
+      node.kubernetes.io/role: node
+      topology.ebs.csi.aws.com/zone: eu-central-1b
+      topology.k8s.aws/zone-id: euc1-az3
+      topology.kubernetes.io/region: eu-central-1
+      topology.kubernetes.io/zone: eu-central-1b
+      worker.garden.sapcloud.io/group: cpu-worker-0
+      worker.gardener.cloud/cri-name: containerd
+      worker.gardener.cloud/gardener-node-agent-secret-name: gardener-node-agent-cpu-worker-0-3bc222209ba548f5
+      worker.gardener.cloud/kubernetes-version: 1.35.5
+      worker.gardener.cloud/pool: cpu-worker-0
+      worker.gardener.cloud/system-components: "true"
+    managedFields:
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            .: {}
+            f:node-agent.gardener.cloud/reconciliation-delay: {}
+            f:node.machine.sapcloud.io/last-applied-anno-labels-taints: {}
+            f:volumes.kubernetes.io/controller-managed-attach-detach: {}
+          f:finalizers:
+            .: {}
+            v:"node.machine.sapcloud.io/machine-controller": {}
+          f:labels:
+            .: {}
+            f:beta.kubernetes.io/arch: {}
+            f:beta.kubernetes.io/instance-type: {}
+            f:beta.kubernetes.io/os: {}
+            f:failure-domain.beta.kubernetes.io/region: {}
+            f:failure-domain.beta.kubernetes.io/zone: {}
+            f:kubernetes.io/arch: {}
+            f:kubernetes.io/hostname: {}
+            f:kubernetes.io/os: {}
+            f:networking.gardener.cloud/node-local-dns-enabled: {}
+            f:node.gardener.cloud/machine-name: {}
+            f:node.kubernetes.io/instance-type: {}
+            f:node.kubernetes.io/role: {}
+            f:topology.ebs.csi.aws.com/zone: {}
+            f:topology.k8s.aws/zone-id: {}
+            f:topology.kubernetes.io/region: {}
+            f:topology.kubernetes.io/zone: {}
+            f:worker.garden.sapcloud.io/group: {}
+            f:worker.gardener.cloud/cri-name: {}
+            f:worker.gardener.cloud/gardener-node-agent-secret-name: {}
+            f:worker.gardener.cloud/kubernetes-version: {}
+            f:worker.gardener.cloud/pool: {}
+            f:worker.gardener.cloud/system-components: {}
+        f:spec:
+          f:providerID: {}
+        f:status:
+          f:addresses:
+            k:{"type":"InternalDNS"}:
+              .: {}
+              f:address: {}
+              f:type: {}
+            k:{"type":"InternalIP"}:
+              .: {}
+              f:address: {}
+              f:type: {}
+      manager: ancient-changes
+      operation: Update
+      time: "2026-06-30T11:29:59Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"NetworkUnavailable"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: aws-custom-route-controller
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:30:03Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            f:checksum/cloud-config-data: {}
+          f:labels:
+            f:node-role.kubernetes.io/worker: {}
+      manager: gardener-node-agent
+      operation: Update
+      time: "2026-06-30T11:30:20Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            f:node.alpha.kubernetes.io/ttl: {}
+        f:spec:
+          f:podCIDR: {}
+          f:podCIDRs:
+            .: {}
+            v:"10.96.1.0/24": {}
+      manager: kube-controller-manager
+      operation: Update
+      time: "2026-06-30T11:30:36Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            f:csi.volume.kubernetes.io/nodeid: {}
+        f:status:
+          f:conditions:
+            k:{"type":"DiskPressure"}:
+              f:lastHeartbeatTime: {}
+            k:{"type":"MemoryPressure"}:
+              f:lastHeartbeatTime: {}
+            k:{"type":"PIDPressure"}:
+              f:lastHeartbeatTime: {}
+            k:{"type":"Ready"}:
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+          f:images: {}
+      manager: kubelet
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:53:23Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"HostNetworkProblem"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: network-problem-detector-host
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:55:49Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"CorruptDockerOverlay2"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"CperHardwareErrorFatal"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentContainerdRestart"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentDockerRestart"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentKubeletRestart"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentUnregisterNetDevice"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"KernelDeadlock"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"ReadonlyFilesystem"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"XfsShutdown"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: node-problem-detector
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:56:13Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"ClusterNetworkProblem"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: network-problem-detector-pod
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:57:17Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"SystemdUnitsReady"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: gardener-node-agent
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:57:21Z"
+    name: ip-10-250-152-124.eu-central-1.compute.internal
+    resourceVersion: "21784"
+    uid: deca2198-33eb-4bd1-a714-5e07faa673b0
+  spec:
+    podCIDR: 10.96.1.0/24
+    podCIDRs:
+    - 10.96.1.0/24
+    providerID: aws:///eu-central-1b/i-006e276e6b9564c6a
+  status:
+    addresses:
+    - address: 10.250.152.124
+      type: InternalIP
+    - address: ip-10-250-152-124.eu-central-1.compute.internal
+      type: InternalDNS
+    - address: ip-10-250-152-124.eu-central-1.compute.internal
+      type: Hostname
+    allocatable:
+      cpu: 3920m
+      ephemeral-storage: "79064028098"
+      hugepages-1Gi: "0"
+      hugepages-2Mi: "0"
+      memory: 14936120Ki
+      pods: "110"
+    capacity:
+      cpu: "4"
+      ephemeral-storage: 81274700Ki
+      hugepages-1Gi: "0"
+      hugepages-2Mi: "0"
+      memory: 16087096Ki
+      pods: "110"
+    conditions:
+    - lastHeartbeatTime: "2026-06-30T11:57:17Z"
+      lastTransitionTime: "2026-06-30T11:32:56Z"
+      message: no cluster network problems
+      reason: NoNetworkProblems
+      status: "False"
+      type: ClusterNetworkProblem
+    - lastHeartbeatTime: "2026-06-30T11:55:49Z"
+      lastTransitionTime: "2026-06-30T11:31:23Z"
+      message: no host network problems
+      reason: NoNetworkProblems
+      status: "False"
+      type: HostNetworkProblem
+    - lastHeartbeatTime: "2026-06-30T11:56:13Z"
+      lastTransitionTime: "2026-06-30T11:31:08Z"
+      message: docker is functioning properly
+      reason: NoFrequentDockerRestart
+      status: "False"
+      type: FrequentDockerRestart
+    - lastHeartbeatTime: "2026-06-30T11:56:13Z"
+      lastTransitionTime: "2026-06-30T11:31:08Z"
+      message: containerd is functioning properly
+      reason: NoFrequentContainerdRestart
+      status: "False"
+      type: FrequentContainerdRestart
+    - lastHeartbeatTime: "2026-06-30T11:56:13Z"
+      lastTransitionTime: "2026-06-30T11:31:08Z"
+      message: XFS has not shutdown
+      reason: XfsHasNotShutDown
+      status: "False"
+      type: XfsShutdown
+    - lastHeartbeatTime: "2026-06-30T11:56:13Z"
+      lastTransitionTime: "2026-06-30T11:31:08Z"
+      message: node is functioning properly
+      reason: NoFrequentUnregisterNetDevice
+      status: "False"
+      type: FrequentUnregisterNetDevice
+    - lastHeartbeatTime: "2026-06-30T11:56:13Z"
+      lastTransitionTime: "2026-06-30T11:31:08Z"
+      message: kubelet is functioning properly
+      reason: NoFrequentKubeletRestart
+      status: "False"
+      type: FrequentKubeletRestart
+    - lastHeartbeatTime: "2026-06-30T11:56:13Z"
+      lastTransitionTime: "2026-06-30T11:31:08Z"
+      message: kernel has no deadlock
+      reason: KernelHasNoDeadlock
+      status: "False"
+      type: KernelDeadlock
+    - lastHeartbeatTime: "2026-06-30T11:56:13Z"
+      lastTransitionTime: "2026-06-30T11:31:08Z"
+      message: UEFI CPER has no fatal error
+      reason: CperHardwareHasNoFatalError
+      status: "False"
+      type: CperHardwareErrorFatal
+    - lastHeartbeatTime: "2026-06-30T11:56:13Z"
+      lastTransitionTime: "2026-06-30T11:31:08Z"
+      message: docker overlay2 is functioning properly
+      reason: NoCorruptDockerOverlay2
+      status: "False"
+      type: CorruptDockerOverlay2
+    - lastHeartbeatTime: "2026-06-30T11:56:13Z"
+      lastTransitionTime: "2026-06-30T11:31:08Z"
+      message: Filesystem is not read-only
+      reason: FilesystemIsNotReadOnly
+      status: "False"
+      type: ReadonlyFilesystem
+    - lastHeartbeatTime: "2026-06-30T11:53:23Z"
+      lastTransitionTime: "2026-06-30T11:29:54Z"
+      message: kubelet has sufficient memory available
+      reason: KubeletHasSufficientMemory
+      status: "False"
+      type: MemoryPressure
+    - lastHeartbeatTime: "2026-06-30T11:53:23Z"
+      lastTransitionTime: "2026-06-30T11:29:54Z"
+      message: kubelet has no disk pressure
+      reason: KubeletHasNoDiskPressure
+      status: "False"
+      type: DiskPressure
+    - lastHeartbeatTime: "2026-06-30T11:53:23Z"
+      lastTransitionTime: "2026-06-30T11:29:54Z"
+      message: kubelet has sufficient PID available
+      reason: KubeletHasSufficientPID
+      status: "False"
+      type: PIDPressure
+    - lastHeartbeatTime: "2026-06-30T11:53:23Z"
+      lastTransitionTime: "2026-06-30T11:30:36Z"
+      message: kubelet is posting ready status
+      reason: KubeletReady
+      status: "True"
+      type: Ready
+    - lastHeartbeatTime: null
+      lastTransitionTime: "2026-06-30T11:30:03Z"
+      message: RouteController created a route
+      reason: RouteCreated
+      status: "False"
+      type: NetworkUnavailable
+    - lastHeartbeatTime: "2026-06-30T11:57:21Z"
+      lastTransitionTime: "2026-06-30T11:31:20Z"
+      message: All systemd units from the operating system config are running as expected.
+      reason: AllUnitsHealthy
+      status: "True"
+      type: SystemdUnitsReady
+    daemonEndpoints:
+      kubeletEndpoint:
+        Port: 10250
+    features:
+      supplementalGroupsPolicy: true
+    images:
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/calico/node@sha256:5b249927e535ee2b204eb72479a24c6cfb20fe66f22c8f4115bc57312b6a7951
+      sizeBytes: 157982993
+    - names:
+      - registry.k8s.io/nfd/node-feature-discovery@sha256:f9ef2ebee55141a1758d3c0a87bb701f5db2adf6856f7218b11bc2bac7b63862
+      - registry.k8s.io/nfd/node-feature-discovery:v0.18.3
+      sizeBytes: 83817218
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/calico/cni@sha256:b2d87050d7e11c3739db4abf0efcd2421135afc5d9ab9b621c02ec886492e979
+      sizeBytes: 72411545
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/node-problem-detector/node-problem-detector@sha256:53eb4de868b32a523c4c6e1eeb0286302b6e07c7b8ba922b0f28eb1128cb26ac
+      sizeBytes: 64129726
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/proxyv2@sha256:fd19b3e01274a0dfe60affb33ce9d2c3ddc185ff7cdbd2d1f04dde9bcb9e2094
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/proxyv2:1.29.3-distroless
+      sizeBytes: 53994382
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/kyma-otel-collector@sha256:172937adf6007eca4b85302354520372c3cc077abbe0b222edb19fb6e92dcb54
+      - europe-docker.pkg.dev/kyma-project/prod/kyma-otel-collector:0.153.0-1.65.0
+      sizeBytes: 47704908
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/dns/k8s-dns-node-cache@sha256:f760e68b1f11470248329a2d4c2ed7118ae4d6e626bfcbdbf0278fbdb80fa2b8
+      sizeBytes: 43601554
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/3rd/envoyproxy/envoy@sha256:60078834c4a0d77d0bf54fa1d5477f6b58f6213a74f2f9dee7065152d2a5da94
+      sizeBytes: 40657165
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/install-cni@sha256:7d89f44098068045cf551a16ead831ca2e40726d5bf5d9a9a423dbf4d5087cf4
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/install-cni:1.29.3-distroless
+      sizeBytes: 39145291
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/calico/typha@sha256:1a256aafbe48fb4b4f17e035339a62296eddf6882842b07e4ccfacd9c34433d3
+      sizeBytes: 35389958
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/provider-aws/aws-ebs-csi-driver@sha256:75eba05866b0138a62640734a7cc094211b2122d0cab4446397bd2a3efe19365
+      sizeBytes: 35157248
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/pilot@sha256:b1acd8c1520b11a7d04fd4e392a19d843b332f3d27f702dd1d92b1ebac742f42
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/pilot:1.29.3-distroless
+      sizeBytes: 31707599
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/kube-proxy@sha256:2ab7f6fe66a0046b613b8522e6c00c2a9f20e1dff817cf073f99fbb0bc90b470
+      sizeBytes: 25181232
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/coredns/coredns@sha256:d35404539daedc93ce2975dabcf82ea5cd306a7fd6d45847ab20b1b9ede5b587
+      sizeBytes: 22756777
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/metrics-server/metrics-server@sha256:565457461457e9a884648a02669c2396d51d005df90d1663c7663f0711326395
+      sizeBytes: 21978671
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/vpn-client@sha256:304a39c65596169bb6f789b6275e20a56304b28b5f2271a5fbaffabefffd1e24
+      sizeBytes: 21950077
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/prometheus/blackbox-exporter@sha256:a43a6ded7fc7f389d567a068ecea5f475ab7f4e601690d1046d96ef267a6c39e
+      sizeBytes: 17356461
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/network-problem-detector@sha256:739e5daa716b69e366b2edc541f48edc9575f3732d14f63a301cc7a0c45a5579
+      sizeBytes: 16269080
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/sig-storage/livenessprobe@sha256:986dc5f7157d2ee7cb10f4ba07fb59bde396992e766933771795631d7c21c455
+      sizeBytes: 14615687
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/sig-storage/csi-node-driver-registrar@sha256:984e6dedae7f1cadd17cb0e4fd468aec2fa9e01cf34e296a2b7d27aa4ffacefb
+      sizeBytes: 14484949
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/cpa/cluster-proportional-autoscaler@sha256:d59a2a97431e02210117ef83f67aba19fa5671870f512b2ae7b4af8da9d01485
+      sizeBytes: 13529703
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/prometheus/node-exporter@sha256:f392ba60142d171092add07e1fc5d50fc55d32ee52d69e08a1fcfc3379a4ae29
+      sizeBytes: 13148612
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/cpa/cpvpa@sha256:383ad4c73ea780ae260fb2b4c99af7ae11b206c84a02d3e77d8a6b66f1e8de79
+      sizeBytes: 12896603
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/alpine-conntrack@sha256:7acf971abf9c901638c82ca724eded2cc5b97e230e523f774e45eb9907adf787
+      sizeBytes: 3950263
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/apiserver-proxy@sha256:9c6022c7141fc617bfa39278e1eb6287e871a396445c5fa62fd5ec7dafded92d
+      sizeBytes: 3671025
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/egress-filter@sha256:3f2009106f1c1ec64cfcb8d64af63141f7338e207e7c1cd994494bed03e1778e
+      sizeBytes: 3597600
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/coredns-config-adapter@sha256:89289c88da52a49687d4b968123eb366e4b1c640276d497044f08c83becbf835
+      sizeBytes: 1755621
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/pause@sha256:b209e0a1042198af58cc7701822c98c8618bc59899b224f7fb431e5bd6306b7e
+      sizeBytes: 307776
+    nodeInfo:
+      architecture: amd64
+      bootID: a160b2b2-093e-420a-a54b-653365b12b5d
+      containerRuntimeVersion: containerd://2.2.3
+      kernelVersion: 6.18.28-cloud-amd64
+      kubeProxyVersion: ""
+      kubeletVersion: v1.35.5
+      machineID: ec2c821473ab0af03476c729f6346d9e
+      operatingSystem: linux
+      osImage: Garden Linux 2150.3.0
+      systemUUID: ec2c8214-73ab-0af0-3476-c729f6346d9e
+    runtimeHandlers:
+    - features:
+        recursiveReadOnlyMounts: true
+        userNamespaces: true
+      name: ""
+    - features:
+        recursiveReadOnlyMounts: true
+        userNamespaces: true
+      name: runc
+- apiVersion: v1
+  kind: Node
+  metadata:
+    annotations:
+      checksum/cloud-config-data: 68341e4cce18130e64511c12367c02f710859eab03b83c39a7503bbc6f9724fb
+      csi.volume.kubernetes.io/nodeid: '{"ebs.csi.aws.com":"i-0393e33d681511aa0"}'
+      node-agent.gardener.cloud/reconciliation-delay: 1m15s
+      node.alpha.kubernetes.io/ttl: "0"
+      node.machine.sapcloud.io/last-applied-anno-labels-taints: '{"metadata":{"labels":{"kubernetes.io/arch":"amd64","networking.gardener.cloud/node-local-dns-enabled":"true","node.kubernetes.io/role":"node","topology.ebs.csi.aws.com/zone":"eu-central-1c","topology.kubernetes.io/zone":"eu-central-1c","worker.garden.sapcloud.io/group":"cpu-worker-0","worker.gardener.cloud/cri-name":"containerd","worker.gardener.cloud/gardener-node-agent-secret-name":"gardener-node-agent-cpu-worker-0-3bc222209ba548f5","worker.gardener.cloud/pool":"cpu-worker-0","worker.gardener.cloud/system-components":"true"}},"spec":{}}'
+      volumes.kubernetes.io/controller-managed-attach-detach: "true"
+    creationTimestamp: "2026-06-30T11:29:55Z"
+    finalizers:
+    - node.machine.sapcloud.io/machine-controller
+    labels:
+      beta.kubernetes.io/arch: amd64
+      beta.kubernetes.io/instance-type: m7i.xlarge
+      beta.kubernetes.io/os: linux
+      failure-domain.beta.kubernetes.io/region: eu-central-1
+      failure-domain.beta.kubernetes.io/zone: eu-central-1c
+      kubernetes.io/arch: amd64
+      kubernetes.io/hostname: ip-10-250-76-140.eu-central-1.compute.internal
+      kubernetes.io/os: linux
+      networking.gardener.cloud/node-local-dns-enabled: "true"
+      node-role.kubernetes.io/worker: ""
+      node.gardener.cloud/machine-name: shoot--kyma-dev--db24d09-cpu-worker-0-z2-6db6b-wdhcq
+      node.kubernetes.io/instance-type: m7i.xlarge
+      node.kubernetes.io/role: node
+      topology.ebs.csi.aws.com/zone: eu-central-1c
+      topology.k8s.aws/zone-id: euc1-az1
+      topology.kubernetes.io/region: eu-central-1
+      topology.kubernetes.io/zone: eu-central-1c
+      worker.garden.sapcloud.io/group: cpu-worker-0
+      worker.gardener.cloud/cri-name: containerd
+      worker.gardener.cloud/gardener-node-agent-secret-name: gardener-node-agent-cpu-worker-0-3bc222209ba548f5
+      worker.gardener.cloud/kubernetes-version: 1.35.5
+      worker.gardener.cloud/pool: cpu-worker-0
+      worker.gardener.cloud/system-components: "true"
+    managedFields:
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            .: {}
+            f:node-agent.gardener.cloud/reconciliation-delay: {}
+            f:node.machine.sapcloud.io/last-applied-anno-labels-taints: {}
+            f:volumes.kubernetes.io/controller-managed-attach-detach: {}
+          f:finalizers:
+            .: {}
+            v:"node.machine.sapcloud.io/machine-controller": {}
+          f:labels:
+            .: {}
+            f:beta.kubernetes.io/arch: {}
+            f:beta.kubernetes.io/instance-type: {}
+            f:beta.kubernetes.io/os: {}
+            f:failure-domain.beta.kubernetes.io/region: {}
+            f:failure-domain.beta.kubernetes.io/zone: {}
+            f:kubernetes.io/arch: {}
+            f:kubernetes.io/hostname: {}
+            f:kubernetes.io/os: {}
+            f:networking.gardener.cloud/node-local-dns-enabled: {}
+            f:node.gardener.cloud/machine-name: {}
+            f:node.kubernetes.io/instance-type: {}
+            f:node.kubernetes.io/role: {}
+            f:topology.ebs.csi.aws.com/zone: {}
+            f:topology.k8s.aws/zone-id: {}
+            f:topology.kubernetes.io/region: {}
+            f:topology.kubernetes.io/zone: {}
+            f:worker.garden.sapcloud.io/group: {}
+            f:worker.gardener.cloud/cri-name: {}
+            f:worker.gardener.cloud/gardener-node-agent-secret-name: {}
+            f:worker.gardener.cloud/kubernetes-version: {}
+            f:worker.gardener.cloud/pool: {}
+            f:worker.gardener.cloud/system-components: {}
+        f:spec:
+          f:providerID: {}
+        f:status:
+          f:addresses:
+            k:{"type":"InternalDNS"}:
+              .: {}
+              f:address: {}
+              f:type: {}
+            k:{"type":"InternalIP"}:
+              .: {}
+              f:address: {}
+              f:type: {}
+      manager: ancient-changes
+      operation: Update
+      time: "2026-06-30T11:29:57Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"NetworkUnavailable"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: aws-custom-route-controller
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:30:03Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            f:checksum/cloud-config-data: {}
+          f:labels:
+            f:node-role.kubernetes.io/worker: {}
+      manager: gardener-node-agent
+      operation: Update
+      time: "2026-06-30T11:30:20Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            f:node.alpha.kubernetes.io/ttl: {}
+        f:spec:
+          f:podCIDR: {}
+          f:podCIDRs:
+            .: {}
+            v:"10.96.2.0/24": {}
+      manager: kube-controller-manager
+      operation: Update
+      time: "2026-06-30T11:30:41Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"ClusterNetworkProblem"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: network-problem-detector-pod
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:54:24Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            f:csi.volume.kubernetes.io/nodeid: {}
+        f:status:
+          f:conditions:
+            k:{"type":"DiskPressure"}:
+              f:lastHeartbeatTime: {}
+            k:{"type":"MemoryPressure"}:
+              f:lastHeartbeatTime: {}
+            k:{"type":"PIDPressure"}:
+              f:lastHeartbeatTime: {}
+            k:{"type":"Ready"}:
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+          f:images: {}
+      manager: kubelet
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:54:45Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"HostNetworkProblem"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: network-problem-detector-host
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:55:56Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"CorruptDockerOverlay2"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"CperHardwareErrorFatal"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentContainerdRestart"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentDockerRestart"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentKubeletRestart"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentUnregisterNetDevice"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"KernelDeadlock"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"ReadonlyFilesystem"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"XfsShutdown"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: node-problem-detector
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:56:01Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"SystemdUnitsReady"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: gardener-node-agent
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:57:21Z"
+    name: ip-10-250-76-140.eu-central-1.compute.internal
+    resourceVersion: "21787"
+    uid: f768ffcf-fb6d-4f34-8936-77ee7fd54600
+  spec:
+    podCIDR: 10.96.2.0/24
+    podCIDRs:
+    - 10.96.2.0/24
+    providerID: aws:///eu-central-1c/i-0393e33d681511aa0
+  status:
+    addresses:
+    - address: 10.250.76.140
+      type: InternalIP
+    - address: ip-10-250-76-140.eu-central-1.compute.internal
+      type: InternalDNS
+    - address: ip-10-250-76-140.eu-central-1.compute.internal
+      type: Hostname
+    allocatable:
+      cpu: 3920m
+      ephemeral-storage: "79064028098"
+      hugepages-1Gi: "0"
+      hugepages-2Mi: "0"
+      memory: 14936124Ki
+      pods: "110"
+    capacity:
+      cpu: "4"
+      ephemeral-storage: 81274700Ki
+      hugepages-1Gi: "0"
+      hugepages-2Mi: "0"
+      memory: 16087100Ki
+      pods: "110"
+    conditions:
+    - lastHeartbeatTime: "2026-06-30T11:54:24Z"
+      lastTransitionTime: "2026-06-30T11:33:03Z"
+      message: no cluster network problems
+      reason: NoNetworkProblems
+      status: "False"
+      type: ClusterNetworkProblem
+    - lastHeartbeatTime: "2026-06-30T11:55:56Z"
+      lastTransitionTime: "2026-06-30T11:31:24Z"
+      message: no host network problems
+      reason: NoNetworkProblems
+      status: "False"
+      type: HostNetworkProblem
+    - lastHeartbeatTime: "2026-06-30T11:56:01Z"
+      lastTransitionTime: "2026-06-30T11:30:58Z"
+      message: docker overlay2 is functioning properly
+      reason: NoCorruptDockerOverlay2
+      status: "False"
+      type: CorruptDockerOverlay2
+    - lastHeartbeatTime: "2026-06-30T11:56:01Z"
+      lastTransitionTime: "2026-06-30T11:30:58Z"
+      message: Filesystem is not read-only
+      reason: FilesystemIsNotReadOnly
+      status: "False"
+      type: ReadonlyFilesystem
+    - lastHeartbeatTime: "2026-06-30T11:56:01Z"
+      lastTransitionTime: "2026-06-30T11:30:58Z"
+      message: node is functioning properly
+      reason: NoFrequentUnregisterNetDevice
+      status: "False"
+      type: FrequentUnregisterNetDevice
+    - lastHeartbeatTime: "2026-06-30T11:56:01Z"
+      lastTransitionTime: "2026-06-30T11:30:58Z"
+      message: docker is functioning properly
+      reason: NoFrequentDockerRestart
+      status: "False"
+      type: FrequentDockerRestart
+    - lastHeartbeatTime: "2026-06-30T11:56:01Z"
+      lastTransitionTime: "2026-06-30T11:30:58Z"
+      message: containerd is functioning properly
+      reason: NoFrequentContainerdRestart
+      status: "False"
+      type: FrequentContainerdRestart
+    - lastHeartbeatTime: "2026-06-30T11:56:01Z"
+      lastTransitionTime: "2026-06-30T11:30:58Z"
+      message: kernel has no deadlock
+      reason: KernelHasNoDeadlock
+      status: "False"
+      type: KernelDeadlock
+    - lastHeartbeatTime: "2026-06-30T11:56:01Z"
+      lastTransitionTime: "2026-06-30T11:30:58Z"
+      message: XFS has not shutdown
+      reason: XfsHasNotShutDown
+      status: "False"
+      type: XfsShutdown
+    - lastHeartbeatTime: "2026-06-30T11:56:01Z"
+      lastTransitionTime: "2026-06-30T11:30:58Z"
+      message: UEFI CPER has no fatal error
+      reason: CperHardwareHasNoFatalError
+      status: "False"
+      type: CperHardwareErrorFatal
+    - lastHeartbeatTime: "2026-06-30T11:56:01Z"
+      lastTransitionTime: "2026-06-30T11:30:58Z"
+      message: kubelet is functioning properly
+      reason: NoFrequentKubeletRestart
+      status: "False"
+      type: FrequentKubeletRestart
+    - lastHeartbeatTime: "2026-06-30T11:54:45Z"
+      lastTransitionTime: "2026-06-30T11:29:55Z"
+      message: kubelet has sufficient memory available
+      reason: KubeletHasSufficientMemory
+      status: "False"
+      type: MemoryPressure
+    - lastHeartbeatTime: "2026-06-30T11:54:45Z"
+      lastTransitionTime: "2026-06-30T11:29:55Z"
+      message: kubelet has no disk pressure
+      reason: KubeletHasNoDiskPressure
+      status: "False"
+      type: DiskPressure
+    - lastHeartbeatTime: "2026-06-30T11:54:45Z"
+      lastTransitionTime: "2026-06-30T11:29:55Z"
+      message: kubelet has sufficient PID available
+      reason: KubeletHasSufficientPID
+      status: "False"
+      type: PIDPressure
+    - lastHeartbeatTime: "2026-06-30T11:54:45Z"
+      lastTransitionTime: "2026-06-30T11:30:41Z"
+      message: kubelet is posting ready status
+      reason: KubeletReady
+      status: "True"
+      type: Ready
+    - lastHeartbeatTime: null
+      lastTransitionTime: "2026-06-30T11:30:03Z"
+      message: RouteController created a route
+      reason: RouteCreated
+      status: "False"
+      type: NetworkUnavailable
+    - lastHeartbeatTime: "2026-06-30T11:57:21Z"
+      lastTransitionTime: "2026-06-30T11:31:20Z"
+      message: All systemd units from the operating system config are running as expected.
+      reason: AllUnitsHealthy
+      status: "True"
+      type: SystemdUnitsReady
+    daemonEndpoints:
+      kubeletEndpoint:
+        Port: 10250
+    features:
+      supplementalGroupsPolicy: true
+    images:
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/calico/node@sha256:5b249927e535ee2b204eb72479a24c6cfb20fe66f22c8f4115bc57312b6a7951
+      sizeBytes: 157982993
+    - names:
+      - registry.k8s.io/nfd/node-feature-discovery@sha256:f9ef2ebee55141a1758d3c0a87bb701f5db2adf6856f7218b11bc2bac7b63862
+      - registry.k8s.io/nfd/node-feature-discovery:v0.18.3
+      sizeBytes: 83817218
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/calico/cni@sha256:b2d87050d7e11c3739db4abf0efcd2421135afc5d9ab9b621c02ec886492e979
+      sizeBytes: 72411545
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/node-problem-detector/node-problem-detector@sha256:53eb4de868b32a523c4c6e1eeb0286302b6e07c7b8ba922b0f28eb1128cb26ac
+      sizeBytes: 64129726
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/proxyv2@sha256:fd19b3e01274a0dfe60affb33ce9d2c3ddc185ff7cdbd2d1f04dde9bcb9e2094
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/proxyv2:1.29.3-distroless
+      sizeBytes: 53994382
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/kyma-otel-collector@sha256:172937adf6007eca4b85302354520372c3cc077abbe0b222edb19fb6e92dcb54
+      - europe-docker.pkg.dev/kyma-project/prod/kyma-otel-collector:0.153.0-1.65.0
+      sizeBytes: 47704908
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/dns/k8s-dns-node-cache@sha256:f760e68b1f11470248329a2d4c2ed7118ae4d6e626bfcbdbf0278fbdb80fa2b8
+      sizeBytes: 43601554
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/3rd/envoyproxy/envoy@sha256:60078834c4a0d77d0bf54fa1d5477f6b58f6213a74f2f9dee7065152d2a5da94
+      sizeBytes: 40657165
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/install-cni@sha256:7d89f44098068045cf551a16ead831ca2e40726d5bf5d9a9a423dbf4d5087cf4
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/install-cni:1.29.3-distroless
+      sizeBytes: 39145291
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/calico/typha@sha256:1a256aafbe48fb4b4f17e035339a62296eddf6882842b07e4ccfacd9c34433d3
+      sizeBytes: 35389958
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/provider-aws/aws-ebs-csi-driver@sha256:75eba05866b0138a62640734a7cc094211b2122d0cab4446397bd2a3efe19365
+      sizeBytes: 35157248
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/pilot@sha256:b1acd8c1520b11a7d04fd4e392a19d843b332f3d27f702dd1d92b1ebac742f42
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/pilot:1.29.3-distroless
+      sizeBytes: 31707599
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/kube-proxy@sha256:2ab7f6fe66a0046b613b8522e6c00c2a9f20e1dff817cf073f99fbb0bc90b470
+      sizeBytes: 25181232
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/network-problem-detector@sha256:739e5daa716b69e366b2edc541f48edc9575f3732d14f63a301cc7a0c45a5579
+      sizeBytes: 16269080
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/sig-storage/livenessprobe@sha256:986dc5f7157d2ee7cb10f4ba07fb59bde396992e766933771795631d7c21c455
+      sizeBytes: 14615687
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/sig-storage/csi-node-driver-registrar@sha256:984e6dedae7f1cadd17cb0e4fd468aec2fa9e01cf34e296a2b7d27aa4ffacefb
+      sizeBytes: 14484949
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/prometheus/node-exporter@sha256:f392ba60142d171092add07e1fc5d50fc55d32ee52d69e08a1fcfc3379a4ae29
+      sizeBytes: 13148612
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/apps/victoriametrics/vmagent@sha256:fcc805d583382c624da4c7e5fc2493b01316a6677f2f820ca0f227a87e2cd6fe
+      - europe-docker.pkg.dev/kyma-project/prod/apps/victoriametrics/vmagent:1.144.0-sap0
+      sizeBytes: 11064733
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/runtime-watcher@sha256:0c64fa4d99468b933fd121996308da9b5d01cbb422b3819d62aa4552251a0c68
+      - europe-docker.pkg.dev/kyma-project/prod/runtime-watcher:2.1.11
+      sizeBytes: 10500578
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/alpine-conntrack@sha256:7acf971abf9c901638c82ca724eded2cc5b97e230e523f774e45eb9907adf787
+      sizeBytes: 3950263
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/apiserver-proxy@sha256:9c6022c7141fc617bfa39278e1eb6287e871a396445c5fa62fd5ec7dafded92d
+      sizeBytes: 3671025
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/egress-filter@sha256:3f2009106f1c1ec64cfcb8d64af63141f7338e207e7c1cd994494bed03e1778e
+      sizeBytes: 3597600
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/coredns-config-adapter@sha256:89289c88da52a49687d4b968123eb366e4b1c640276d497044f08c83becbf835
+      sizeBytes: 1755621
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/pause@sha256:b209e0a1042198af58cc7701822c98c8618bc59899b224f7fb431e5bd6306b7e
+      sizeBytes: 307776
+    nodeInfo:
+      architecture: amd64
+      bootID: 86dc6fa4-b89d-4785-a847-a34279e23c03
+      containerRuntimeVersion: containerd://2.2.3
+      kernelVersion: 6.18.28-cloud-amd64
+      kubeProxyVersion: ""
+      kubeletVersion: v1.35.5
+      machineID: ec21f7176ef359c8cee5efaa2bc2abc3
+      operatingSystem: linux
+      osImage: Garden Linux 2150.3.0
+      systemUUID: ec21f717-6ef3-59c8-cee5-efaa2bc2abc3
+    runtimeHandlers:
+    - features:
+        recursiveReadOnlyMounts: true
+        userNamespaces: true
+      name: ""
+    - features:
+        recursiveReadOnlyMounts: true
+        userNamespaces: true
+      name: runc
+- apiVersion: v1
+  kind: Node
+  metadata:
+    annotations:
+      checksum/cloud-config-data: eae5128582455fb1ecf80a094b13b55cd9d6eac155f1c6b6dcdcedbb36691535
+      csi.volume.kubernetes.io/nodeid: '{"ebs.csi.aws.com":"i-0bb3dcb9e06885efc"}'
+      node-agent.gardener.cloud/reconciliation-delay: 2m30s
+      node.alpha.kubernetes.io/ttl: "0"
+      node.machine.sapcloud.io/last-applied-anno-labels-taints: '{"metadata":{"labels":{"kubernetes.io/arch":"amd64","networking.gardener.cloud/node-local-dns-enabled":"true","node.kubernetes.io/role":"node","topology.ebs.csi.aws.com/zone":"eu-central-1c","topology.kubernetes.io/zone":"eu-central-1c","worker.garden.sapcloud.io/group":"gpu-test","worker.gardener.cloud/cri-name":"containerd","worker.gardener.cloud/gardener-node-agent-secret-name":"gardener-node-agent-gpu-test-e0a4c254eac40bf8","worker.gardener.cloud/pool":"gpu-test","worker.gardener.cloud/system-components":"true"}},"spec":{}}'
+      nvidia.com/gpu-driver-upgrade-enabled: "true"
+      volumes.kubernetes.io/controller-managed-attach-detach: "true"
+    creationTimestamp: "2026-06-30T11:29:57Z"
+    finalizers:
+    - node.machine.sapcloud.io/machine-controller
+    labels:
+      beta.kubernetes.io/arch: amd64
+      beta.kubernetes.io/instance-type: g6.xlarge
+      beta.kubernetes.io/os: linux
+      failure-domain.beta.kubernetes.io/region: eu-central-1
+      failure-domain.beta.kubernetes.io/zone: eu-central-1c
+      kubernetes.io/arch: amd64
+      kubernetes.io/hostname: ip-10-250-76-172.eu-central-1.compute.internal
+      kubernetes.io/os: linux
+      networking.gardener.cloud/node-local-dns-enabled: "true"
+      node-role.kubernetes.io/worker: ""
+      node.gardener.cloud/machine-name: shoot--kyma-dev--db24d09-gpu-test-z1-54f65-bzqmd
+      node.kubernetes.io/instance-type: g6.xlarge
+      node.kubernetes.io/role: node
+      nvidia.com/gpu-driver-upgrade-state: upgrade-done
+      nvidia.com/gpu.deploy.container-toolkit: "true"
+      nvidia.com/gpu.deploy.dcgm: "true"
+      nvidia.com/gpu.deploy.dcgm-exporter: "true"
+      nvidia.com/gpu.deploy.device-plugin: "true"
+      nvidia.com/gpu.deploy.driver: "true"
+      nvidia.com/gpu.deploy.gpu-feature-discovery: "true"
+      nvidia.com/gpu.deploy.node-status-exporter: "true"
+      nvidia.com/gpu.deploy.nvsm: ""
+      nvidia.com/gpu.deploy.operator-validator: "true"
+      nvidia.com/gpu.present: "true"
+      topology.ebs.csi.aws.com/zone: eu-central-1c
+      topology.k8s.aws/zone-id: euc1-az1
+      topology.kubernetes.io/region: eu-central-1
+      topology.kubernetes.io/zone: eu-central-1c
+      worker.garden.sapcloud.io/group: gpu-test
+      worker.gardener.cloud/cri-name: containerd
+      worker.gardener.cloud/gardener-node-agent-secret-name: gardener-node-agent-gpu-test-e0a4c254eac40bf8
+      worker.gardener.cloud/kubernetes-version: 1.35.5
+      worker.gardener.cloud/pool: gpu-test
+      worker.gardener.cloud/system-components: "true"
+    managedFields:
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            .: {}
+            f:checksum/cloud-config-data: {}
+            f:node-agent.gardener.cloud/reconciliation-delay: {}
+            f:node.machine.sapcloud.io/last-applied-anno-labels-taints: {}
+            f:volumes.kubernetes.io/controller-managed-attach-detach: {}
+          f:finalizers:
+            .: {}
+            v:"node.machine.sapcloud.io/machine-controller": {}
+          f:labels:
+            .: {}
+            f:beta.kubernetes.io/arch: {}
+            f:beta.kubernetes.io/instance-type: {}
+            f:beta.kubernetes.io/os: {}
+            f:failure-domain.beta.kubernetes.io/region: {}
+            f:failure-domain.beta.kubernetes.io/zone: {}
+            f:kubernetes.io/arch: {}
+            f:kubernetes.io/hostname: {}
+            f:kubernetes.io/os: {}
+            f:networking.gardener.cloud/node-local-dns-enabled: {}
+            f:node-role.kubernetes.io/worker: {}
+            f:node.gardener.cloud/machine-name: {}
+            f:node.kubernetes.io/instance-type: {}
+            f:node.kubernetes.io/role: {}
+            f:topology.ebs.csi.aws.com/zone: {}
+            f:topology.k8s.aws/zone-id: {}
+            f:topology.kubernetes.io/region: {}
+            f:topology.kubernetes.io/zone: {}
+            f:worker.garden.sapcloud.io/group: {}
+            f:worker.gardener.cloud/cri-name: {}
+            f:worker.gardener.cloud/gardener-node-agent-secret-name: {}
+            f:worker.gardener.cloud/kubernetes-version: {}
+            f:worker.gardener.cloud/pool: {}
+            f:worker.gardener.cloud/system-components: {}
+        f:spec:
+          f:providerID: {}
+        f:status:
+          f:addresses:
+            k:{"type":"InternalDNS"}:
+              .: {}
+              f:address: {}
+              f:type: {}
+            k:{"type":"InternalIP"}:
+              .: {}
+              f:address: {}
+              f:type: {}
+          f:conditions:
+            k:{"type":"NetworkUnavailable"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: ancient-changes
+      operation: Update
+      time: "2026-06-30T11:30:22Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            f:node.alpha.kubernetes.io/ttl: {}
+        f:spec:
+          f:podCIDR: {}
+          f:podCIDRs:
+            .: {}
+            v:"10.96.3.0/24": {}
+      manager: kube-controller-manager
+      operation: Update
+      time: "2026-06-30T11:30:44Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:labels:
+            f:nvidia.com/gpu.deploy.container-toolkit: {}
+            f:nvidia.com/gpu.deploy.dcgm: {}
+            f:nvidia.com/gpu.deploy.dcgm-exporter: {}
+            f:nvidia.com/gpu.deploy.device-plugin: {}
+            f:nvidia.com/gpu.deploy.gpu-feature-discovery: {}
+            f:nvidia.com/gpu.deploy.nvsm: {}
+            f:nvidia.com/gpu.deploy.operator-validator: {}
+      manager: driver-manager
+      operation: Update
+      time: "2026-06-30T11:37:49Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            f:nvidia.com/gpu-driver-upgrade-enabled: {}
+          f:labels:
+            f:nvidia.com/gpu-driver-upgrade-state: {}
+            f:nvidia.com/gpu.deploy.driver: {}
+            f:nvidia.com/gpu.deploy.node-status-exporter: {}
+            f:nvidia.com/gpu.present: {}
+      manager: gpu-operator
+      operation: Update
+      time: "2026-06-30T11:39:36Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"HostNetworkProblem"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: network-problem-detector-host
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:55:32Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"CorruptDockerOverlay2"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"CperHardwareErrorFatal"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentContainerdRestart"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentDockerRestart"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentKubeletRestart"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentUnregisterNetDevice"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"KernelDeadlock"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"ReadonlyFilesystem"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"XfsShutdown"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: node-problem-detector
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:56:06Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            f:csi.volume.kubernetes.io/nodeid: {}
+        f:status:
+          f:allocatable:
+            f:nvidia.com/gpu: {}
+          f:capacity:
+            f:nvidia.com/gpu: {}
+          f:conditions:
+            k:{"type":"DiskPressure"}:
+              f:lastHeartbeatTime: {}
+            k:{"type":"MemoryPressure"}:
+              f:lastHeartbeatTime: {}
+            k:{"type":"PIDPressure"}:
+              f:lastHeartbeatTime: {}
+            k:{"type":"Ready"}:
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+          f:images: {}
+          f:nodeInfo:
+            f:containerRuntimeVersion: {}
+          f:runtimeHandlers: {}
+      manager: kubelet
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:56:20Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"SystemdUnitsReady"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: gardener-node-agent
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:57:23Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"ClusterNetworkProblem"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: network-problem-detector-pod
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:57:25Z"
+    name: ip-10-250-76-172.eu-central-1.compute.internal
+    resourceVersion: "21829"
+    uid: 9f6b0e85-ae94-4f47-9fb1-60b66c4acffa
+  spec:
+    podCIDR: 10.96.3.0/24
+    podCIDRs:
+    - 10.96.3.0/24
+    providerID: aws:///eu-central-1c/i-0bb3dcb9e06885efc
+  status:
+    addresses:
+    - address: 10.250.76.172
+      type: InternalIP
+    - address: ip-10-250-76-172.eu-central-1.compute.internal
+      type: InternalDNS
+    - address: ip-10-250-76-172.eu-central-1.compute.internal
+      type: Hostname
+    allocatable:
+      cpu: 3920m
+      ephemeral-storage: "79064028098"
+      hugepages-1Gi: "0"
+      hugepages-2Mi: "0"
+      memory: 14590004Ki
+      nvidia.com/gpu: "0"
+      pods: "110"
+    capacity:
+      cpu: "4"
+      ephemeral-storage: 81274700Ki
+      hugepages-1Gi: "0"
+      hugepages-2Mi: "0"
+      memory: 15740980Ki
+      nvidia.com/gpu: "0"
+      pods: "110"
+    conditions:
+    - lastHeartbeatTime: "2026-06-30T11:57:25Z"
+      lastTransitionTime: "2026-06-30T11:32:58Z"
+      message: no cluster network problems
+      reason: NoNetworkProblems
+      status: "False"
+      type: ClusterNetworkProblem
+    - lastHeartbeatTime: "2026-06-30T11:55:32Z"
+      lastTransitionTime: "2026-06-30T11:31:10Z"
+      message: no host network problems
+      reason: NoNetworkProblems
+      status: "False"
+      type: HostNetworkProblem
+    - lastHeartbeatTime: "2026-06-30T11:56:06Z"
+      lastTransitionTime: "2026-06-30T11:31:03Z"
+      message: containerd is functioning properly
+      reason: NoFrequentContainerdRestart
+      status: "False"
+      type: FrequentContainerdRestart
+    - lastHeartbeatTime: "2026-06-30T11:56:06Z"
+      lastTransitionTime: "2026-06-30T11:31:03Z"
+      message: UEFI CPER has no fatal error
+      reason: CperHardwareHasNoFatalError
+      status: "False"
+      type: CperHardwareErrorFatal
+    - lastHeartbeatTime: "2026-06-30T11:56:06Z"
+      lastTransitionTime: "2026-06-30T11:31:03Z"
+      message: node is functioning properly
+      reason: NoFrequentUnregisterNetDevice
+      status: "False"
+      type: FrequentUnregisterNetDevice
+    - lastHeartbeatTime: "2026-06-30T11:56:06Z"
+      lastTransitionTime: "2026-06-30T11:31:03Z"
+      message: Filesystem is not read-only
+      reason: FilesystemIsNotReadOnly
+      status: "False"
+      type: ReadonlyFilesystem
+    - lastHeartbeatTime: "2026-06-30T11:56:06Z"
+      lastTransitionTime: "2026-06-30T11:31:03Z"
+      message: docker overlay2 is functioning properly
+      reason: NoCorruptDockerOverlay2
+      status: "False"
+      type: CorruptDockerOverlay2
+    - lastHeartbeatTime: "2026-06-30T11:56:06Z"
+      lastTransitionTime: "2026-06-30T11:31:03Z"
+      message: kernel has no deadlock
+      reason: KernelHasNoDeadlock
+      status: "False"
+      type: KernelDeadlock
+    - lastHeartbeatTime: "2026-06-30T11:56:06Z"
+      lastTransitionTime: "2026-06-30T11:31:03Z"
+      message: kubelet is functioning properly
+      reason: NoFrequentKubeletRestart
+      status: "False"
+      type: FrequentKubeletRestart
+    - lastHeartbeatTime: "2026-06-30T11:56:06Z"
+      lastTransitionTime: "2026-06-30T11:31:03Z"
+      message: XFS has not shutdown
+      reason: XfsHasNotShutDown
+      status: "False"
+      type: XfsShutdown
+    - lastHeartbeatTime: "2026-06-30T11:56:06Z"
+      lastTransitionTime: "2026-06-30T11:31:03Z"
+      message: docker is functioning properly
+      reason: NoFrequentDockerRestart
+      status: "False"
+      type: FrequentDockerRestart
+    - lastHeartbeatTime: "2026-06-30T11:56:20Z"
+      lastTransitionTime: "2026-06-30T11:29:57Z"
+      message: kubelet has sufficient memory available
+      reason: KubeletHasSufficientMemory
+      status: "False"
+      type: MemoryPressure
+    - lastHeartbeatTime: "2026-06-30T11:56:20Z"
+      lastTransitionTime: "2026-06-30T11:29:57Z"
+      message: kubelet has no disk pressure
+      reason: KubeletHasNoDiskPressure
+      status: "False"
+      type: DiskPressure
+    - lastHeartbeatTime: "2026-06-30T11:56:20Z"
+      lastTransitionTime: "2026-06-30T11:29:57Z"
+      message: kubelet has sufficient PID available
+      reason: KubeletHasSufficientPID
+      status: "False"
+      type: PIDPressure
+    - lastHeartbeatTime: "2026-06-30T11:56:20Z"
+      lastTransitionTime: "2026-06-30T11:30:41Z"
+      message: kubelet is posting ready status
+      reason: KubeletReady
+      status: "True"
+      type: Ready
+    - lastHeartbeatTime: null
+      lastTransitionTime: "2026-06-30T11:30:03Z"
+      message: RouteController created a route
+      reason: RouteCreated
+      status: "False"
+      type: NetworkUnavailable
+    - lastHeartbeatTime: "2026-06-30T11:57:23Z"
+      lastTransitionTime: "2026-06-30T11:31:22Z"
+      message: All systemd units from the operating system config are running as expected.
+      reason: AllUnitsHealthy
+      status: "True"
+      type: SystemdUnitsReady
+    daemonEndpoints:
+      kubeletEndpoint:
+        Port: 10250
+    features:
+      supplementalGroupsPolicy: true
+    images:
+    - names:
+      - ghcr.io/gardenlinux/gardenlinux-nvidia-installer/1.8.0/driver@sha256:4afc3a5d777ccd1a4d53ee973cc1ca1b5a1504c62556df97517fc0f69ba7090b
+      - ghcr.io/gardenlinux/gardenlinux-nvidia-installer/1.8.0/driver:590-6.18.28-cloud-amd64-gardenlinux0
+      sizeBytes: 836150118
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/calico/node@sha256:5b249927e535ee2b204eb72479a24c6cfb20fe66f22c8f4115bc57312b6a7951
+      sizeBytes: 157982993
+    - names:
+      - nvcr.io/nvidia/gpu-operator@sha256:327518e7157e9634eab9aeb51abfba816845fad47177ca985e1b34d202a1f51e
+      - nvcr.io/nvidia/gpu-operator:v26.3.1
+      sizeBytes: 138219156
+    - names:
+      - registry.k8s.io/nfd/node-feature-discovery@sha256:f9ef2ebee55141a1758d3c0a87bb701f5db2adf6856f7218b11bc2bac7b63862
+      - registry.k8s.io/nfd/node-feature-discovery:v0.18.3
+      sizeBytes: 83817218
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/calico/cni@sha256:b2d87050d7e11c3739db4abf0efcd2421135afc5d9ab9b621c02ec886492e979
+      sizeBytes: 72411545
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/node-problem-detector/node-problem-detector@sha256:53eb4de868b32a523c4c6e1eeb0286302b6e07c7b8ba922b0f28eb1128cb26ac
+      sizeBytes: 64129726
+    - names:
+      - nvcr.io/nvidia/k8s/dcgm-exporter@sha256:b5d8813707469c5717ce27a5fefb933a29e8ba6cd2fd7d93ad3dcd6ae18579ef
+      - nvcr.io/nvidia/k8s/dcgm-exporter:4.5.1-4.8.0-distroless
+      sizeBytes: 59967374
+    - names:
+      - nvcr.io/nvidia/k8s/container-toolkit@sha256:62204e9fc0f817e6e3fd8edc18d0322feda3728cdf89270d20a8d01d7ef0edb5
+      - nvcr.io/nvidia/k8s/container-toolkit:v1.19.0
+      sizeBytes: 57183469
+    - names:
+      - nvcr.io/nvidia/k8s-device-plugin@sha256:75eff5962176618e486da18d73eae57870369b69f186fc8d193973166d1cfad9
+      - nvcr.io/nvidia/k8s-device-plugin:v0.19.0
+      sizeBytes: 55900878
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/istio/releases/istio-manager@sha256:e431244892bbc38ed3a01952277db483b3e7222e72c42531a84484b07b7c3b2a
+      - europe-docker.pkg.dev/kyma-project/prod/istio/releases/istio-manager:1.27.4
+      sizeBytes: 55588955
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/kyma-otel-collector@sha256:172937adf6007eca4b85302354520372c3cc077abbe0b222edb19fb6e92dcb54
+      - europe-docker.pkg.dev/kyma-project/prod/kyma-otel-collector:0.153.0-1.65.0
+      sizeBytes: 47704908
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/dns/k8s-dns-node-cache@sha256:f760e68b1f11470248329a2d4c2ed7118ae4d6e626bfcbdbf0278fbdb80fa2b8
+      sizeBytes: 43601554
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/3rd/envoyproxy/envoy@sha256:60078834c4a0d77d0bf54fa1d5477f6b58f6213a74f2f9dee7065152d2a5da94
+      sizeBytes: 40657165
+    - names:
+      - nvcr.io/nvidia/cloud-native/k8s-driver-manager@sha256:6677437faff2c45506484dd9f0f04ad3b4880aa65b26d11f76d169e65497fade
+      - nvcr.io/nvidia/cloud-native/k8s-driver-manager:v0.10.0
+      sizeBytes: 39712939
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/install-cni@sha256:7d89f44098068045cf551a16ead831ca2e40726d5bf5d9a9a423dbf4d5087cf4
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/install-cni:1.29.3-distroless
+      sizeBytes: 39145291
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/calico/typha@sha256:1a256aafbe48fb4b4f17e035339a62296eddf6882842b07e4ccfacd9c34433d3
+      sizeBytes: 35389958
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/provider-aws/aws-ebs-csi-driver@sha256:75eba05866b0138a62640734a7cc094211b2122d0cab4446397bd2a3efe19365
+      sizeBytes: 35157248
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/warden/operator@sha256:ef9db2437199f2f80d66ba209a36f4b287810fd8d7d0e6f45657e3163f51febd
+      - europe-docker.pkg.dev/kyma-project/prod/warden/operator:1.2.1
+      sizeBytes: 28231546
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/warden/admission@sha256:4f3c28c129493e2e4ec37dfd1152abcdcc626f70d67037a0fe120add814d0214
+      - europe-docker.pkg.dev/kyma-project/prod/warden/admission:1.2.1
+      sizeBytes: 28061723
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/kim-snatch@sha256:a775472103aa6d563a2ec50616c4f3102cf4777cb10805b6e8489f6d25bde4cc
+      - europe-docker.pkg.dev/kyma-project/prod/kim-snatch:1.0.15-experimental
+      sizeBytes: 26358069
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/kube-proxy@sha256:2ab7f6fe66a0046b613b8522e6c00c2a9f20e1dff817cf073f99fbb0bc90b470
+      sizeBytes: 25181232
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/coredns/coredns@sha256:d35404539daedc93ce2975dabcf82ea5cd306a7fd6d45847ab20b1b9ede5b587
+      sizeBytes: 22756777
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/btp-manager@sha256:fcfc8c4ec5591c515eb5dd57f309eab1bfae92577c5a2dada355f4a3683ed7af
+      - europe-docker.pkg.dev/kyma-project/prod/btp-manager:1.3.7
+      sizeBytes: 22411939
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/gpu@sha256:5de62961fa3714da9a3919e0f14889aa494aa48407800ec72dc060f90f036fff
+      - europe-docker.pkg.dev/kyma-project/prod/gpu:0.1.1
+      sizeBytes: 21823616
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/apps/monitoring/kube-state-metrics@sha256:4de7472e6e2fb0c8871b7b81b72e0eba2189f34c6d51e380a4f0301a2026576c
+      - europe-docker.pkg.dev/kyma-project/prod/apps/monitoring/kube-state-metrics:2.18.0-sap2
+      sizeBytes: 18784945
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/api-gateway/releases/api-gateway-manager@sha256:b372f6f178e5f0ded963eb1d348bc0a2d186b76d007ddb9bb11293a1feed019e
+      - europe-docker.pkg.dev/kyma-project/prod/api-gateway/releases/api-gateway-manager:3.8.0
+      sizeBytes: 17116199
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/network-problem-detector@sha256:739e5daa716b69e366b2edc541f48edc9575f3732d14f63a301cc7a0c45a5579
+      sizeBytes: 16269080
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/sig-storage/livenessprobe@sha256:986dc5f7157d2ee7cb10f4ba07fb59bde396992e766933771795631d7c21c455
+      sizeBytes: 14615687
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/sig-storage/csi-node-driver-registrar@sha256:984e6dedae7f1cadd17cb0e4fd468aec2fa9e01cf34e296a2b7d27aa4ffacefb
+      sizeBytes: 14484949
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/prometheus/node-exporter@sha256:f392ba60142d171092add07e1fc5d50fc55d32ee52d69e08a1fcfc3379a4ae29
+      sizeBytes: 13148612
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/apps/victoriametrics/vmagent@sha256:fcc805d583382c624da4c7e5fc2493b01316a6677f2f820ca0f227a87e2cd6fe
+      - europe-docker.pkg.dev/kyma-project/prod/apps/victoriametrics/vmagent:1.144.0-sap0
+      sizeBytes: 11064733
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/alpine-conntrack@sha256:7acf971abf9c901638c82ca724eded2cc5b97e230e523f774e45eb9907adf787
+      sizeBytes: 3950263
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/apiserver-proxy@sha256:9c6022c7141fc617bfa39278e1eb6287e871a396445c5fa62fd5ec7dafded92d
+      sizeBytes: 3671025
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/egress-filter@sha256:3f2009106f1c1ec64cfcb8d64af63141f7338e207e7c1cd994494bed03e1778e
+      sizeBytes: 3597600
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/coredns-config-adapter@sha256:89289c88da52a49687d4b968123eb366e4b1c640276d497044f08c83becbf835
+      sizeBytes: 1755621
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/pause@sha256:b209e0a1042198af58cc7701822c98c8618bc59899b224f7fb431e5bd6306b7e
+      sizeBytes: 307776
+    nodeInfo:
+      architecture: amd64
+      bootID: 5374d0dc-9e40-47ce-b24b-0270aa6e299e
+      containerRuntimeVersion: containerd://2.2.3
+      kernelVersion: 6.18.28-cloud-amd64
+      kubeProxyVersion: ""
+      kubeletVersion: v1.35.5
+      machineID: ec2ed916a0c3bddbf193a3dc50867e61
+      operatingSystem: linux
+      osImage: Garden Linux 2150.3.0
+      systemUUID: ec2ed916-a0c3-bddb-f193-a3dc50867e61
+    runtimeHandlers:
+    - features:
+        recursiveReadOnlyMounts: true
+        userNamespaces: true
+      name: ""
+    - features:
+        recursiveReadOnlyMounts: true
+        userNamespaces: true
+      name: nvidia
+    - features:
+        recursiveReadOnlyMounts: true
+        userNamespaces: true
+      name: nvidia-cdi
+    - features:
+        recursiveReadOnlyMounts: true
+        userNamespaces: true
+      name: nvidia-legacy
+    - features:
+        recursiveReadOnlyMounts: true
+        userNamespaces: true
+      name: runc
+- apiVersion: v1
+  kind: Node
+  metadata:
+    annotations:
+      checksum/cloud-config-data: 68341e4cce18130e64511c12367c02f710859eab03b83c39a7503bbc6f9724fb
+      csi.volume.kubernetes.io/nodeid: '{"ebs.csi.aws.com":"i-02076740a081c0851"}'
+      node-agent.gardener.cloud/reconciliation-delay: 3m45s
+      node.alpha.kubernetes.io/ttl: "0"
+      node.machine.sapcloud.io/last-applied-anno-labels-taints: '{"metadata":{"labels":{"kubernetes.io/arch":"amd64","networking.gardener.cloud/node-local-dns-enabled":"true","node.kubernetes.io/role":"node","topology.ebs.csi.aws.com/zone":"eu-central-1a","topology.kubernetes.io/zone":"eu-central-1a","worker.garden.sapcloud.io/group":"cpu-worker-0","worker.gardener.cloud/cri-name":"containerd","worker.gardener.cloud/gardener-node-agent-secret-name":"gardener-node-agent-cpu-worker-0-3bc222209ba548f5","worker.gardener.cloud/pool":"cpu-worker-0","worker.gardener.cloud/system-components":"true"}},"spec":{}}'
+      volumes.kubernetes.io/controller-managed-attach-detach: "true"
+    creationTimestamp: "2026-06-30T11:29:51Z"
+    finalizers:
+    - node.machine.sapcloud.io/machine-controller
+    labels:
+      beta.kubernetes.io/arch: amd64
+      beta.kubernetes.io/instance-type: m7i.xlarge
+      beta.kubernetes.io/os: linux
+      failure-domain.beta.kubernetes.io/region: eu-central-1
+      failure-domain.beta.kubernetes.io/zone: eu-central-1a
+      kubernetes.io/arch: amd64
+      kubernetes.io/hostname: ip-10-250-8-230.eu-central-1.compute.internal
+      kubernetes.io/os: linux
+      networking.gardener.cloud/node-local-dns-enabled: "true"
+      node-role.kubernetes.io/worker: ""
+      node.gardener.cloud/machine-name: shoot--kyma-dev--db24d09-cpu-worker-0-z1-7d98b-8wcq7
+      node.kubernetes.io/instance-type: m7i.xlarge
+      node.kubernetes.io/role: node
+      topology.ebs.csi.aws.com/zone: eu-central-1a
+      topology.k8s.aws/zone-id: euc1-az2
+      topology.kubernetes.io/region: eu-central-1
+      topology.kubernetes.io/zone: eu-central-1a
+      worker.garden.sapcloud.io/group: cpu-worker-0
+      worker.gardener.cloud/cri-name: containerd
+      worker.gardener.cloud/gardener-node-agent-secret-name: gardener-node-agent-cpu-worker-0-3bc222209ba548f5
+      worker.gardener.cloud/kubernetes-version: 1.35.5
+      worker.gardener.cloud/pool: cpu-worker-0
+      worker.gardener.cloud/system-components: "true"
+    managedFields:
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            .: {}
+            f:node-agent.gardener.cloud/reconciliation-delay: {}
+            f:node.machine.sapcloud.io/last-applied-anno-labels-taints: {}
+            f:volumes.kubernetes.io/controller-managed-attach-detach: {}
+          f:finalizers:
+            .: {}
+            v:"node.machine.sapcloud.io/machine-controller": {}
+          f:labels:
+            .: {}
+            f:beta.kubernetes.io/arch: {}
+            f:beta.kubernetes.io/instance-type: {}
+            f:beta.kubernetes.io/os: {}
+            f:failure-domain.beta.kubernetes.io/region: {}
+            f:failure-domain.beta.kubernetes.io/zone: {}
+            f:kubernetes.io/arch: {}
+            f:kubernetes.io/hostname: {}
+            f:kubernetes.io/os: {}
+            f:networking.gardener.cloud/node-local-dns-enabled: {}
+            f:node.gardener.cloud/machine-name: {}
+            f:node.kubernetes.io/instance-type: {}
+            f:node.kubernetes.io/role: {}
+            f:topology.ebs.csi.aws.com/zone: {}
+            f:topology.k8s.aws/zone-id: {}
+            f:topology.kubernetes.io/region: {}
+            f:topology.kubernetes.io/zone: {}
+            f:worker.garden.sapcloud.io/group: {}
+            f:worker.gardener.cloud/cri-name: {}
+            f:worker.gardener.cloud/gardener-node-agent-secret-name: {}
+            f:worker.gardener.cloud/kubernetes-version: {}
+            f:worker.gardener.cloud/pool: {}
+            f:worker.gardener.cloud/system-components: {}
+        f:spec:
+          f:providerID: {}
+        f:status:
+          f:addresses:
+            k:{"type":"InternalDNS"}:
+              .: {}
+              f:address: {}
+              f:type: {}
+            k:{"type":"InternalIP"}:
+              .: {}
+              f:address: {}
+              f:type: {}
+          f:conditions:
+            k:{"type":"NetworkUnavailable"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: ancient-changes
+      operation: Update
+      time: "2026-06-30T11:29:57Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            f:checksum/cloud-config-data: {}
+          f:labels:
+            f:node-role.kubernetes.io/worker: {}
+      manager: gardener-node-agent
+      operation: Update
+      time: "2026-06-30T11:30:17Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            f:node.alpha.kubernetes.io/ttl: {}
+        f:spec:
+          f:podCIDR: {}
+          f:podCIDRs:
+            .: {}
+            v:"10.96.0.0/24": {}
+      manager: kube-controller-manager
+      operation: Update
+      time: "2026-06-30T11:30:33Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:volumesAttached: {}
+      manager: kube-controller-manager
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:32:30Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            f:csi.volume.kubernetes.io/nodeid: {}
+        f:status:
+          f:conditions:
+            k:{"type":"DiskPressure"}:
+              f:lastHeartbeatTime: {}
+            k:{"type":"MemoryPressure"}:
+              f:lastHeartbeatTime: {}
+            k:{"type":"PIDPressure"}:
+              f:lastHeartbeatTime: {}
+            k:{"type":"Ready"}:
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+          f:images: {}
+          f:volumesInUse: {}
+      manager: kubelet
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:54:32Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"HostNetworkProblem"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: network-problem-detector-host
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:55:36Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"CorruptDockerOverlay2"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"CperHardwareErrorFatal"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentContainerdRestart"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentDockerRestart"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentKubeletRestart"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"FrequentUnregisterNetDevice"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"KernelDeadlock"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"ReadonlyFilesystem"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+            k:{"type":"XfsShutdown"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: node-problem-detector
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:55:59Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"ClusterNetworkProblem"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: network-problem-detector-pod
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:57:16Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:status:
+          f:conditions:
+            k:{"type":"SystemdUnitsReady"}:
+              .: {}
+              f:lastHeartbeatTime: {}
+              f:lastTransitionTime: {}
+              f:message: {}
+              f:reason: {}
+              f:status: {}
+              f:type: {}
+      manager: gardener-node-agent
+      operation: Update
+      subresource: status
+      time: "2026-06-30T11:57:18Z"
+    name: ip-10-250-8-230.eu-central-1.compute.internal
+    resourceVersion: "21750"
+    uid: bb165c72-1b41-403a-ba24-560fc5cee8d0
+  spec:
+    podCIDR: 10.96.0.0/24
+    podCIDRs:
+    - 10.96.0.0/24
+    providerID: aws:///eu-central-1a/i-02076740a081c0851
+  status:
+    addresses:
+    - address: 10.250.8.230
+      type: InternalIP
+    - address: ip-10-250-8-230.eu-central-1.compute.internal
+      type: InternalDNS
+    - address: ip-10-250-8-230.eu-central-1.compute.internal
+      type: Hostname
+    allocatable:
+      cpu: 3920m
+      ephemeral-storage: "79064028098"
+      hugepages-1Gi: "0"
+      hugepages-2Mi: "0"
+      memory: 14936124Ki
+      pods: "110"
+    capacity:
+      cpu: "4"
+      ephemeral-storage: 81274700Ki
+      hugepages-1Gi: "0"
+      hugepages-2Mi: "0"
+      memory: 16087100Ki
+      pods: "110"
+    conditions:
+    - lastHeartbeatTime: "2026-06-30T11:57:16Z"
+      lastTransitionTime: "2026-06-30T11:32:49Z"
+      message: no cluster network problems
+      reason: NoNetworkProblems
+      status: "False"
+      type: ClusterNetworkProblem
+    - lastHeartbeatTime: "2026-06-30T11:55:36Z"
+      lastTransitionTime: "2026-06-30T11:31:14Z"
+      message: no host network problems
+      reason: NoNetworkProblems
+      status: "False"
+      type: HostNetworkProblem
+    - lastHeartbeatTime: "2026-06-30T11:55:59Z"
+      lastTransitionTime: "2026-06-30T11:30:54Z"
+      message: containerd is functioning properly
+      reason: NoFrequentContainerdRestart
+      status: "False"
+      type: FrequentContainerdRestart
+    - lastHeartbeatTime: "2026-06-30T11:55:59Z"
+      lastTransitionTime: "2026-06-30T11:30:54Z"
+      message: XFS has not shutdown
+      reason: XfsHasNotShutDown
+      status: "False"
+      type: XfsShutdown
+    - lastHeartbeatTime: "2026-06-30T11:55:59Z"
+      lastTransitionTime: "2026-06-30T11:30:54Z"
+      message: Filesystem is not read-only
+      reason: FilesystemIsNotReadOnly
+      status: "False"
+      type: ReadonlyFilesystem
+    - lastHeartbeatTime: "2026-06-30T11:55:59Z"
+      lastTransitionTime: "2026-06-30T11:30:54Z"
+      message: kernel has no deadlock
+      reason: KernelHasNoDeadlock
+      status: "False"
+      type: KernelDeadlock
+    - lastHeartbeatTime: "2026-06-30T11:55:59Z"
+      lastTransitionTime: "2026-06-30T11:30:54Z"
+      message: node is functioning properly
+      reason: NoFrequentUnregisterNetDevice
+      status: "False"
+      type: FrequentUnregisterNetDevice
+    - lastHeartbeatTime: "2026-06-30T11:55:59Z"
+      lastTransitionTime: "2026-06-30T11:30:54Z"
+      message: kubelet is functioning properly
+      reason: NoFrequentKubeletRestart
+      status: "False"
+      type: FrequentKubeletRestart
+    - lastHeartbeatTime: "2026-06-30T11:55:59Z"
+      lastTransitionTime: "2026-06-30T11:30:54Z"
+      message: UEFI CPER has no fatal error
+      reason: CperHardwareHasNoFatalError
+      status: "False"
+      type: CperHardwareErrorFatal
+    - lastHeartbeatTime: "2026-06-30T11:55:59Z"
+      lastTransitionTime: "2026-06-30T11:30:54Z"
+      message: docker overlay2 is functioning properly
+      reason: NoCorruptDockerOverlay2
+      status: "False"
+      type: CorruptDockerOverlay2
+    - lastHeartbeatTime: "2026-06-30T11:55:59Z"
+      lastTransitionTime: "2026-06-30T11:30:54Z"
+      message: docker is functioning properly
+      reason: NoFrequentDockerRestart
+      status: "False"
+      type: FrequentDockerRestart
+    - lastHeartbeatTime: "2026-06-30T11:54:32Z"
+      lastTransitionTime: "2026-06-30T11:29:51Z"
+      message: kubelet has sufficient memory available
+      reason: KubeletHasSufficientMemory
+      status: "False"
+      type: MemoryPressure
+    - lastHeartbeatTime: "2026-06-30T11:54:32Z"
+      lastTransitionTime: "2026-06-30T11:29:51Z"
+      message: kubelet has no disk pressure
+      reason: KubeletHasNoDiskPressure
+      status: "False"
+      type: DiskPressure
+    - lastHeartbeatTime: "2026-06-30T11:54:32Z"
+      lastTransitionTime: "2026-06-30T11:29:51Z"
+      message: kubelet has sufficient PID available
+      reason: KubeletHasSufficientPID
+      status: "False"
+      type: PIDPressure
+    - lastHeartbeatTime: "2026-06-30T11:54:32Z"
+      lastTransitionTime: "2026-06-30T11:30:33Z"
+      message: kubelet is posting ready status
+      reason: KubeletReady
+      status: "True"
+      type: Ready
+    - lastHeartbeatTime: null
+      lastTransitionTime: "2026-06-30T11:29:55Z"
+      message: RouteController created a route
+      reason: RouteCreated
+      status: "False"
+      type: NetworkUnavailable
+    - lastHeartbeatTime: "2026-06-30T11:57:18Z"
+      lastTransitionTime: "2026-06-30T11:31:17Z"
+      message: All systemd units from the operating system config are running as expected.
+      reason: AllUnitsHealthy
+      status: "True"
+      type: SystemdUnitsReady
+    daemonEndpoints:
+      kubeletEndpoint:
+        Port: 10250
+    features:
+      supplementalGroupsPolicy: true
+    images:
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/calico/node@sha256:5b249927e535ee2b204eb72479a24c6cfb20fe66f22c8f4115bc57312b6a7951
+      sizeBytes: 157982993
+    - names:
+      - nvcr.io/nvidia/gpu-operator@sha256:327518e7157e9634eab9aeb51abfba816845fad47177ca985e1b34d202a1f51e
+      - nvcr.io/nvidia/gpu-operator:v26.3.1
+      sizeBytes: 138219156
+    - names:
+      - registry.k8s.io/nfd/node-feature-discovery@sha256:f9ef2ebee55141a1758d3c0a87bb701f5db2adf6856f7218b11bc2bac7b63862
+      - registry.k8s.io/nfd/node-feature-discovery:v0.18.3
+      sizeBytes: 83817218
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/calico/cni@sha256:b2d87050d7e11c3739db4abf0efcd2421135afc5d9ab9b621c02ec886492e979
+      sizeBytes: 72411545
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/node-problem-detector/node-problem-detector@sha256:53eb4de868b32a523c4c6e1eeb0286302b6e07c7b8ba922b0f28eb1128cb26ac
+      sizeBytes: 64129726
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/proxyv2@sha256:fd19b3e01274a0dfe60affb33ce9d2c3ddc185ff7cdbd2d1f04dde9bcb9e2094
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/proxyv2:1.29.3-distroless
+      sizeBytes: 53994382
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/kyma-otel-collector@sha256:172937adf6007eca4b85302354520372c3cc077abbe0b222edb19fb6e92dcb54
+      - europe-docker.pkg.dev/kyma-project/prod/kyma-otel-collector:0.153.0-1.65.0
+      sizeBytes: 47704908
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/dns/k8s-dns-node-cache@sha256:f760e68b1f11470248329a2d4c2ed7118ae4d6e626bfcbdbf0278fbdb80fa2b8
+      sizeBytes: 43601554
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/3rd/envoyproxy/envoy@sha256:60078834c4a0d77d0bf54fa1d5477f6b58f6213a74f2f9dee7065152d2a5da94
+      sizeBytes: 40657165
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/install-cni@sha256:7d89f44098068045cf551a16ead831ca2e40726d5bf5d9a9a423dbf4d5087cf4
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/install-cni:1.29.3-distroless
+      sizeBytes: 39145291
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/calico/typha@sha256:1a256aafbe48fb4b4f17e035339a62296eddf6882842b07e4ccfacd9c34433d3
+      sizeBytes: 35389958
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/provider-aws/aws-ebs-csi-driver@sha256:75eba05866b0138a62640734a7cc094211b2122d0cab4446397bd2a3efe19365
+      sizeBytes: 35157248
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/pilot@sha256:b1acd8c1520b11a7d04fd4e392a19d843b332f3d27f702dd1d92b1ebac742f42
+      - europe-docker.pkg.dev/kyma-project/prod/external/istio/pilot:1.29.3-distroless
+      sizeBytes: 31707599
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/external/ghcr.io/sap/sap-btp-service-operator/controller@sha256:09602c63ce44387ed8cdf61f98af272e000cae906704f308c1331b4af6f82f4f
+      - europe-docker.pkg.dev/kyma-project/prod/external/ghcr.io/sap/sap-btp-service-operator/controller:v0.11.5
+      sizeBytes: 31216836
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/kube-proxy@sha256:2ab7f6fe66a0046b613b8522e6c00c2a9f20e1dff817cf073f99fbb0bc90b470
+      sizeBytes: 25181232
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/coredns/coredns@sha256:d35404539daedc93ce2975dabcf82ea5cd306a7fd6d45847ab20b1b9ede5b587
+      sizeBytes: 22756777
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/metrics-server/metrics-server@sha256:565457461457e9a884648a02669c2396d51d005df90d1663c7663f0711326395
+      sizeBytes: 21978671
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/prometheus/blackbox-exporter@sha256:a43a6ded7fc7f389d567a068ecea5f475ab7f4e601690d1046d96ef267a6c39e
+      sizeBytes: 17356461
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/network-problem-detector@sha256:739e5daa716b69e366b2edc541f48edc9575f3732d14f63a301cc7a0c45a5579
+      sizeBytes: 16269080
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/sig-storage/livenessprobe@sha256:986dc5f7157d2ee7cb10f4ba07fb59bde396992e766933771795631d7c21c455
+      sizeBytes: 14615687
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/sig-storage/csi-node-driver-registrar@sha256:984e6dedae7f1cadd17cb0e4fd468aec2fa9e01cf34e296a2b7d27aa4ffacefb
+      sizeBytes: 14484949
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/quay_io/prometheus/node-exporter@sha256:f392ba60142d171092add07e1fc5d50fc55d32ee52d69e08a1fcfc3379a4ae29
+      sizeBytes: 13148612
+    - names:
+      - europe-docker.pkg.dev/kyma-project/prod/apps/victoriametrics/vmagent@sha256:fcc805d583382c624da4c7e5fc2493b01316a6677f2f820ca0f227a87e2cd6fe
+      - europe-docker.pkg.dev/kyma-project/prod/apps/victoriametrics/vmagent:1.144.0-sap0
+      sizeBytes: 11064733
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/alpine-conntrack@sha256:7acf971abf9c901638c82ca724eded2cc5b97e230e523f774e45eb9907adf787
+      sizeBytes: 3950263
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/apiserver-proxy@sha256:9c6022c7141fc617bfa39278e1eb6287e871a396445c5fa62fd5ec7dafded92d
+      sizeBytes: 3671025
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/egress-filter@sha256:3f2009106f1c1ec64cfcb8d64af63141f7338e207e7c1cd994494bed03e1778e
+      sizeBytes: 3597600
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/europe-docker_pkg_dev/gardener-project/releases/gardener/coredns-config-adapter@sha256:89289c88da52a49687d4b968123eb366e4b1c640276d497044f08c83becbf835
+      sizeBytes: 1755621
+    - names:
+      - europe-docker.pkg.dev/sap-se-gcp-k8s-c-delivery/releases-canary-public/registry_k8s_io/pause@sha256:b209e0a1042198af58cc7701822c98c8618bc59899b224f7fb431e5bd6306b7e
+      sizeBytes: 307776
+    nodeInfo:
+      architecture: amd64
+      bootID: a6cb3393-ce6f-4a7b-9060-7ac5ee7c889c
+      containerRuntimeVersion: containerd://2.2.3
+      kernelVersion: 6.18.28-cloud-amd64
+      kubeProxyVersion: ""
+      kubeletVersion: v1.35.5
+      machineID: ec2e1e4603959fe22f57cb19ec6f176a
+      operatingSystem: linux
+      osImage: Garden Linux 2150.3.0
+      systemUUID: ec2e1e46-0395-9fe2-2f57-cb19ec6f176a
+    runtimeHandlers:
+    - features:
+        recursiveReadOnlyMounts: true
+        userNamespaces: true
+      name: ""
+    - features:
+        recursiveReadOnlyMounts: true
+        userNamespaces: true
+      name: runc
+    volumesAttached:
+    - devicePath: ""
+      name: kubernetes.io/csi/ebs.csi.aws.com^vol-0f306516b3b51b23a
+    volumesInUse:
+    - kubernetes.io/csi/ebs.csi.aws.com^vol-0f306516b3b51b23a
+kind: NodeList
+metadata:
+  resourceVersion: "21857"

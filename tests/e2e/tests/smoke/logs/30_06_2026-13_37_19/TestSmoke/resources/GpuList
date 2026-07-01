@@ -1,0 +1,6 @@
+apiVersion: gpu.kyma-project.io/v1beta1
+items: []
+kind: GpuList
+metadata:
+  continue: ""
+  resourceVersion: "21854"
