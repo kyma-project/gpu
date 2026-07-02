@@ -22,7 +22,6 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/e2e-framework/klient/wait"
@@ -132,7 +131,7 @@ func registerCleanup(t *testing.T, cr *gpuv1beta1.Gpu) {
 		waitErr := wait.For(func(ctx context.Context) (bool, error) {
 			ns := &corev1.Namespace{}
 			getErr := r.GetControllerRuntimeClient().Get(ctx, types.NamespacedName{Name: gpuOperatorNamespace}, ns)
-			if apierrors.IsNotFound(getErr) {
+			if k8serrors.IsNotFound(getErr) {
 				return true, nil
 			}
 			if getErr != nil {

@@ -43,10 +43,7 @@ const (
 	podLogFileName     = "%s-%s@%s.log"
 )
 
-var (
-	logsTimeStamp = time.Now().Format("02_01_2006-15_04_05")
-	basePath      = path.Join(".", "logs")
-)
+var logsTimeStamp = time.Now().Format("02_01_2006-15_04_05")
 
 // DumpClusterResources writes the GPU-relevant resources (Gpu CR, gpu-operator
 // namespace contents, ClusterPolicy, NVIDIA driver DaemonSets, Nodes) and pod
@@ -54,6 +51,7 @@ var (
 // All errors are swallowed and logged - dumping is best-effort.
 func DumpClusterResources(t *testing.T) {
 	t.Helper()
+	basePath := path.Join(".", "logs")
 	if ws, ok := os.LookupEnv(baseDirEnvVariable); ok {
 		basePath = path.Join(ws, "logs")
 	}
@@ -83,7 +81,7 @@ func DumpClusterResources(t *testing.T) {
 	dumpResource(t, r, dumpPath, schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "DeploymentList"}, cfg.GpuOperatorNamespace)
 	dumpResource(t, r, dumpPath, schema.GroupVersionKind{Group: "", Version: "v1", Kind: "PodList"}, cfg.GpuOperatorNamespace)
 
-	dumpPodLogs(t, cfg.GpuOperatorNamespace)
+	dumpPodLogs(t, basePath, cfg.GpuOperatorNamespace)
 }
 
 func dumpResource(t *testing.T, r *resources.Resources, dir string, gvk schema.GroupVersionKind, namespace string) {
@@ -119,7 +117,7 @@ func dumpResource(t *testing.T, r *resources.Resources, dir string, gvk schema.G
 	}
 }
 
-func dumpPodLogs(t *testing.T, namespace string) {
+func dumpPodLogs(t *testing.T, basePath, namespace string) {
 	t.Helper()
 	if namespace == "" {
 		return

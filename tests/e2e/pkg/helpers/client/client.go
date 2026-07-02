@@ -21,7 +21,6 @@ limitations under the License.
 package client
 
 import (
-	"sync/atomic"
 	"testing"
 
 	"k8s.io/client-go/kubernetes"
@@ -33,8 +32,6 @@ import (
 	gpuv1beta1 "github.com/kyma-project/gpu/api/v1beta1"
 )
 
-var isInitialized atomic.Bool
-
 // KubeConfig returns the rest.Config resolved from $KUBECONFIG (or the
 // default kubeconfig path). Fails the test if it cannot be read.
 func KubeConfig(t *testing.T) *rest.Config {
@@ -45,8 +42,7 @@ func KubeConfig(t *testing.T) *rest.Config {
 }
 
 // ResourcesClient returns a *resources.Resources backed by the kubeconfig
-// from the environment, with the Gpu scheme registered. Safe to call from
-// multiple tests - scheme registration is one-shot.
+// from the environment, with the Gpu scheme registered on every returned instance.
 func ResourcesClient(t *testing.T) (*resources.Resources, error) {
 	t.Helper()
 	path := conf.ResolveKubeConfigFile()
@@ -58,12 +54,9 @@ func ResourcesClient(t *testing.T) (*resources.Resources, error) {
 		return nil, err
 	}
 
-	if !isInitialized.Load() {
-		if err := gpuv1beta1.AddToScheme(r.GetScheme()); err != nil {
-			t.Logf("Failed to add gpu v1beta1 scheme: %v", err)
-			return nil, err
-		}
-		isInitialized.Store(true)
+	if err := gpuv1beta1.AddToScheme(r.GetScheme()); err != nil {
+		t.Logf("Failed to add gpu v1beta1 scheme: %v", err)
+		return nil, err
 	}
 
 	return r, nil
