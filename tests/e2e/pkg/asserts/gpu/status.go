@@ -111,7 +111,13 @@ func AssertReady(t *testing.T, name string, opts ...Option) {
 // AssertConditionReason waits until the named condition has both the
 // expected status AND the expected reason. Use this to verify specific
 // failure modes (e.g. ForbiddenCRName, ActiveGPUWorkloads).
-func AssertConditionReason(t *testing.T, name, condType string, status metav1.ConditionStatus, reason string, opts ...Option) {
+func AssertConditionReason(
+	t *testing.T,
+	name, condType string,
+	status metav1.ConditionStatus,
+	reason string,
+	opts ...Option,
+) {
 	t.Helper()
 	o := resolveOptions(opts...)
 

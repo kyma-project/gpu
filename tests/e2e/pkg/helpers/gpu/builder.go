@@ -57,7 +57,7 @@ func NewBuilder() *Builder {
 // WithName overrides the CR name. Use it only to test singleton rejection -
 // the controller and the CEL admission rule require the name to be "gpu".
 func (b *Builder) WithName(name string) *Builder {
-	b.gpu.ObjectMeta.Name = name
+	b.gpu.Name = name
 	return b
 }
 

@@ -71,15 +71,20 @@ func DumpClusterResources(t *testing.T) {
 		return
 	}
 
+	gvk := func(group, version, kind string) schema.GroupVersionKind {
+		return schema.GroupVersionKind{Group: group, Version: version, Kind: kind}
+	}
+	ns := cfg.GpuOperatorNamespace
+
 	// Cluster-scoped resources.
-	dumpResource(t, r, dumpPath, schema.GroupVersionKind{Group: "gpu.kyma-project.io", Version: "v1beta1", Kind: "GpuList"}, "")
-	dumpResource(t, r, dumpPath, schema.GroupVersionKind{Group: "nvidia.com", Version: "v1", Kind: "ClusterPolicyList"}, "")
-	dumpResource(t, r, dumpPath, schema.GroupVersionKind{Group: "", Version: "v1", Kind: "NodeList"}, "")
+	dumpResource(t, r, dumpPath, gvk("gpu.kyma-project.io", "v1beta1", "GpuList"), "")
+	dumpResource(t, r, dumpPath, gvk("nvidia.com", "v1", "ClusterPolicyList"), "")
+	dumpResource(t, r, dumpPath, gvk("", "v1", "NodeList"), "")
 
 	// gpu-operator namespace resources.
-	dumpResource(t, r, dumpPath, schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "DaemonSetList"}, cfg.GpuOperatorNamespace)
-	dumpResource(t, r, dumpPath, schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "DeploymentList"}, cfg.GpuOperatorNamespace)
-	dumpResource(t, r, dumpPath, schema.GroupVersionKind{Group: "", Version: "v1", Kind: "PodList"}, cfg.GpuOperatorNamespace)
+	dumpResource(t, r, dumpPath, gvk("apps", "v1", "DaemonSetList"), ns)
+	dumpResource(t, r, dumpPath, gvk("apps", "v1", "DeploymentList"), ns)
+	dumpResource(t, r, dumpPath, gvk("", "v1", "PodList"), ns)
 
 	dumpPodLogs(t, basePath, cfg.GpuOperatorNamespace)
 }

@@ -47,11 +47,11 @@ type Options struct {
 // Option mutates Options.
 type Option func(*Options)
 
-func WithNamespace(ns string) Option       { return func(o *Options) { o.Namespace = ns } }
-func WithName(name string) Option          { return func(o *Options) { o.Name = name } }
-func WithImage(image string) Option        { return func(o *Options) { o.Image = image } }
-func WithGPUCount(count int64) Option      { return func(o *Options) { o.GPUCount = count } }
-func WithoutWaitForReady() Option          { return func(o *Options) { o.WaitForReady = false } }
+func WithNamespace(ns string) Option  { return func(o *Options) { o.Namespace = ns } }
+func WithName(name string) Option     { return func(o *Options) { o.Name = name } }
+func WithImage(image string) Option   { return func(o *Options) { o.Image = image } }
+func WithGPUCount(count int64) Option { return func(o *Options) { o.GPUCount = count } }
+func WithoutWaitForReady() Option     { return func(o *Options) { o.WaitForReady = false } }
 
 // DeployGPUPod creates a Pod requesting a single nvidia.com/gpu resource and
 // optionally waits for it to be Running. Cleanup is registered automatically.
@@ -116,10 +116,7 @@ func DeployGPUPod(t *testing.T, opts ...Option) (*corev1.Pod, error) {
 		return pod, nil
 	}
 
-	timeout := config.Get().TestTimeout
-	if timeout > 5*time.Minute {
-		timeout = 5 * time.Minute
-	}
+	timeout := min(config.Get().TestTimeout, 5*time.Minute)
 	if err := wait.For(
 		conditions.New(r).PodRunning(pod),
 		wait.WithTimeout(timeout),
