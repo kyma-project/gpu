@@ -71,13 +71,17 @@ test-rbac: ## Verify chart RBAC coverage - run after bumping the embedded chart.
 # tests/e2e/README.md for the full prerequisite list.
 E2E_TIMEOUT ?= 90m
 
+# -p 1 forces packages to run serially. The Gpu CRD is a cluster-scoped
+# singleton (CEL rule pins the name to "gpu"), so any two packages that create
+# the CR are mutually exclusive. Parallel execution races on the singleton and
+# fails with "already exists".
 .PHONY: test-e2e
 test-e2e: ## Run e2e tests against the cluster pointed to by KUBECONFIG. Requires GPU nodes and a pre-deployed operator.
-	go test ./tests/e2e/tests/... -v -timeout $(E2E_TIMEOUT)
+	go test -p 1 ./tests/e2e/tests/... -v -timeout $(E2E_TIMEOUT)
 
 .PHONY: test-e2e-junit
 test-e2e-junit: ## Run e2e tests and emit JUnit XML (junit.xml) - requires gotestsum on PATH.
-	gotestsum --junitfile junit.xml -- ./tests/e2e/tests/... -v -timeout $(E2E_TIMEOUT)
+	gotestsum --junitfile junit.xml -- -p 1 ./tests/e2e/tests/... -v -timeout $(E2E_TIMEOUT)
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
