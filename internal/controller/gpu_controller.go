@@ -16,7 +16,6 @@ package controller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -48,7 +47,6 @@ import (
 
 const (
 	requeueWarn          = 30 * time.Second
-	deleteTimeout        = 3 * time.Minute
 	finalizer            = "gpu.kyma-project.io/gpu-operator"
 	gpuOperatorNamespace = "gpu-operator"
 	driverAppLabel       = "nvidia-driver-daemonset"
@@ -336,14 +334,9 @@ func (r *GpuReconciler) reconcileDelete(ctx context.Context, gpu *gpuv1beta1.Gpu
 	}
 
 	// Uninstall is idempotent - returns nil if the release is already gone.
-	if err := r.Installer.Uninstall(ctx, deleteTimeout); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			logger.Error(err, "helm uninstall timed out, forcing finalizer removal; manual cleanup of gpu-operator namespace may be required")
-			if nsErr := r.deleteNamespace(ctx, gpuOperatorNamespace); nsErr != nil {
-				logger.Error(nsErr, "failed to delete namespace after helm timeout")
-			}
-			return r.removeFinalizer(ctx, gpu.Name)
-		}
+	// Does not wait for pods to terminate; namespace deletion below blocks
+	// on child resources via foreground propagation.
+	if err := r.Installer.Uninstall(ctx); err != nil {
 		return ctrl.Result{}, fmt.Errorf("helm uninstall: %w", err)
 	}
 

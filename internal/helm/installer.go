@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"time"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
@@ -78,7 +77,7 @@ func (c *Client) InstallOrUpgrade(ctx context.Context, chartData []byte, values 
 // the namespace itself disappears. Waiting here as well caused Helm to block
 // for 15+ minutes on real GPU hardware (driver pods take that long to
 // terminate), and Helm's u.Timeout was not reliably honored.
-func (c *Client) Uninstall(_ context.Context, _ time.Duration) error {
+func (c *Client) Uninstall(_ context.Context) error {
 	cfg, err := c.actionConfig()
 	if err != nil {
 		return err

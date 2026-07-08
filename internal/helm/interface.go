@@ -16,7 +16,6 @@ package helm
 
 import (
 	"context"
-	"time"
 )
 
 // Installer is the contract the controller uses to drive Helm operations.
@@ -26,6 +25,7 @@ type Installer interface {
 	InstallOrUpgrade(ctx context.Context, chartData []byte, values map[string]any) error
 
 	// Uninstall removes the GPU Operator Helm release. It is idempotent: returns nil
-	// if no release exists. timeout bounds how long the uninstall waits for pods to terminate.
-	Uninstall(ctx context.Context, timeout time.Duration) error
+	// if no release exists. Does not wait for pods to terminate - the driver
+	// DaemonSet can take 15+ minutes to unwind on real GPU hardware.
+	Uninstall(ctx context.Context) error
 }

@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -54,7 +53,7 @@ func (f *fakeInstaller) InstallOrUpgrade(ctx context.Context, chart []byte, valu
 	return f.installErr
 }
 
-func (f *fakeInstaller) Uninstall(_ context.Context, _ time.Duration) error {
+func (f *fakeInstaller) Uninstall(_ context.Context) error {
 	f.uninstallCalled = true
 	return f.uninstallErr
 }

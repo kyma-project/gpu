@@ -45,10 +45,7 @@ func KubeConfig(t *testing.T) *rest.Config {
 // from the environment, with the Gpu scheme registered on every returned instance.
 func ResourcesClient(t *testing.T) (*resources.Resources, error) {
 	t.Helper()
-	path := conf.ResolveKubeConfigFile()
-	cfg := envconf.NewWithKubeConfig(path)
-
-	r, err := resources.New(cfg.Client().RESTConfig())
+	r, err := resources.New(KubeConfig(t))
 	if err != nil {
 		t.Logf("Failed to create resources client: %v", err)
 		return nil, err
