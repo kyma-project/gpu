@@ -41,15 +41,16 @@ type fakeInstaller struct {
 	uninstallCalled bool
 	installErr      error
 	uninstallErr    error
-	installFn       func(context.Context, []byte, map[string]any) error
+	installChanged  bool
+	installFn       func(context.Context, []byte, map[string]any) (bool, error)
 }
 
-func (f *fakeInstaller) InstallOrUpgrade(ctx context.Context, chart []byte, values map[string]any) error {
+func (f *fakeInstaller) InstallOrUpgrade(ctx context.Context, chart []byte, values map[string]any) (bool, error) {
 	f.installCalls++
 	if f.installFn != nil {
 		return f.installFn(ctx, chart, values)
 	}
-	return f.installErr
+	return f.installChanged, f.installErr
 }
 
 func (f *fakeInstaller) Uninstall(_ context.Context) error {
@@ -175,6 +176,22 @@ var _ = Describe("GpuReconciler", func() {
 			Expect(getCondition(gpuName, condHelmInstalled).Status).To(Equal(metav1.ConditionTrue))
 
 			By("operatorVersion is recorded in status")
+			gpu := &gpuv1beta1.Gpu{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
+			Expect(gpu.Status.OperatorVersion).NotTo(BeEmpty())
+		})
+
+		It("treats a skipped (no-op) install the same as a real one: HelmInstalled=True and requeue", func() {
+			// The installer reports changed=false when a deployed release already
+			// matches desired state. The reconciler must still mark HelmInstalled=True
+			// and keep polling - a skipped upgrade is a healthy steady state, not a failure.
+			installer.installChanged = false
+
+			result, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RequeueAfter).To(Equal(requeueWarn))
+			Expect(getCondition(gpuName, condHelmInstalled).Status).To(Equal(metav1.ConditionTrue))
+
 			gpu := &gpuv1beta1.Gpu{}
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: gpuName}, gpu)).To(Succeed())
 			Expect(gpu.Status.OperatorVersion).NotTo(BeEmpty())
@@ -479,9 +496,9 @@ var _ = Describe("GpuReconciler", func() {
 
 		It("passes devicePlugin.config helm values when spec.timeSlicing is set", func() {
 			var capturedValues map[string]any
-			installer.installFn = func(_ context.Context, _ []byte, values map[string]any) error {
+			installer.installFn = func(_ context.Context, _ []byte, values map[string]any) (bool, error) {
 				capturedValues = values
-				return nil
+				return true, nil
 			}
 
 			gpu := &gpuv1beta1.Gpu{}
@@ -504,9 +521,9 @@ var _ = Describe("GpuReconciler", func() {
 
 		It("omits devicePlugin.config helm values when spec.timeSlicing is absent", func() {
 			var capturedValues map[string]any
-			installer.installFn = func(_ context.Context, _ []byte, values map[string]any) error {
+			installer.installFn = func(_ context.Context, _ []byte, values map[string]any) (bool, error) {
 				capturedValues = values
-				return nil
+				return true, nil
 			}
 
 			newGpu2 := &gpuv1beta1.Gpu{}

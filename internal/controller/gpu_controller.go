@@ -262,7 +262,8 @@ func (r *GpuReconciler) installOrUpgrade(ctx context.Context, gpu *gpuv1beta1.Gp
 		return metav1.Condition{}, "", fmt.Errorf("building helm values: %w", err)
 	}
 
-	if err := r.Installer.InstallOrUpgrade(ctx, chartData, values); err != nil {
+	changed, err := r.Installer.InstallOrUpgrade(ctx, chartData, values)
+	if err != nil {
 		statusErr := r.applyStatus(ctx, gpu.Name, statusUpdate{
 			conditions: []metav1.Condition{
 				*preflightCond,
@@ -278,6 +279,10 @@ func (r *GpuReconciler) installOrUpgrade(ctx context.Context, gpu *gpuv1beta1.Gp
 	chartVersion, err := chart.GPUOperatorChartVersion()
 	if err != nil {
 		return metav1.Condition{}, "", fmt.Errorf("reading chart version: %w", err)
+	}
+
+	if changed {
+		logger.Info("GPU Operator chart installed or upgraded", "chartVersion", chartVersion)
 	}
 
 	return metav1.Condition{

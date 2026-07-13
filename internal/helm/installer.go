@@ -17,6 +17,7 @@ package helm
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"helm.sh/helm/v3/pkg/action"
@@ -43,32 +44,82 @@ func NewClient(cfg *rest.Config) *Client {
 }
 
 // InstallOrUpgrade installs the chart if no release exists, or upgrades it if one does.
+// It returns changed=false when a deployed release already matches the desired chart
+// version and values, skipping the upgrade entirely - without this, the reconciler's
+// 30s requeue would drive a real Helm upgrade every cycle, churning hook Jobs and
+// writing an unbounded stream of release-history Secrets into etcd.
+//
 // It always returns immediately without waiting for pods to become ready - the reconciler
 // sets status to Processing and checks health on the next cycle.
-func (c *Client) InstallOrUpgrade(ctx context.Context, chartData []byte, values map[string]any) error {
+func (c *Client) InstallOrUpgrade(ctx context.Context, chartData []byte, values map[string]any) (bool, error) {
 	cfg, err := c.actionConfig()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if err := recoverPending(cfg); err != nil {
-		return err
+		return false, err
 	}
 
 	chrt, err := loadChart(chartData)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	rel, err := currentRelease(cfg)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if rel == nil {
-		return install(ctx, cfg, chrt, values)
+		if err := install(ctx, cfg, chrt, values); err != nil {
+			return false, err
+		}
+		return true, nil
 	}
-	return upgrade(ctx, cfg, chrt, values)
+
+	if releaseUpToDate(rel, chrt, values) {
+		return false, nil
+	}
+
+	if err := upgrade(ctx, cfg, chrt, values); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// releaseUpToDate reports whether the deployed release already matches the desired
+// chart version and values, meaning an upgrade would be a no-op. It only returns true
+// for a release in the deployed state - a failed release must always be re-upgraded so
+// it can self-heal.
+func releaseUpToDate(rel *release.Release, chrt *chart.Chart, values map[string]any) bool {
+	if rel.Info == nil || rel.Info.Status != release.StatusDeployed {
+		return false
+	}
+	if rel.Chart == nil || rel.Chart.Metadata == nil || rel.Chart.Metadata.Version != chrt.Metadata.Version {
+		return false
+	}
+	return valuesEqual(rel.Config, values)
+}
+
+// valuesEqual compares two values maps by canonical JSON. Round-tripping through JSON
+// normalizes the numeric-type differences (float64 vs int) that arise when Helm decodes
+// stored release config versus values built in Go, so semantically identical maps compare
+// equal. On any marshal error it returns false, forcing a real upgrade rather than risking
+// a skipped one.
+func valuesEqual(a, b map[string]any) bool {
+	if len(a) == 0 && len(b) == 0 {
+		return true
+	}
+	aj, err := json.Marshal(a)
+	if err != nil {
+		return false
+	}
+	bj, err := json.Marshal(b)
+	if err != nil {
+		return false
+	}
+	return bytes.Equal(aj, bj)
 }
 
 // Uninstall removes the NVIDIA GPU Operator Helm release without waiting for
@@ -190,11 +241,16 @@ func install(ctx context.Context, cfg *action.Configuration, chrt *chart.Chart, 
 	return nil
 }
 
+// maxReleaseHistory bounds the number of release-revision Secrets Helm retains.
+// Helm's SDK default is 0 (unlimited); leaving it unbounded lets etcd grow without
+// limit as revisions accumulate.
+const maxReleaseHistory = 3
+
 func upgrade(ctx context.Context, cfg *action.Configuration, chrt *chart.Chart, values map[string]any) error {
 	act := action.NewUpgrade(cfg)
 	act.Namespace = releaseNamespace
 	act.Wait = false
-	act.Force = true // force allows upgrading a release that is in a failed state, which would otherwise be rejected by Helm without explicit intervention.
+	act.MaxHistory = maxReleaseHistory
 	if _, err := act.RunWithContext(ctx, releaseName, chrt, values); err != nil {
 		return fmt.Errorf("upgrading gpu-operator: %w", err)
 	}

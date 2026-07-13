@@ -22,7 +22,10 @@ import (
 // The concrete *Client talks to a real cluster; tests inject a fake.
 type Installer interface {
 	// InstallOrUpgrade installs or upgrades the GPU Operator chart with the given values.
-	InstallOrUpgrade(ctx context.Context, chartData []byte, values map[string]any) error
+	// It returns changed=true when a real install or upgrade was performed, and
+	// changed=false when a deployed release already matched the desired state and the
+	// upgrade was skipped.
+	InstallOrUpgrade(ctx context.Context, chartData []byte, values map[string]any) (changed bool, err error)
 
 	// Uninstall removes the GPU Operator Helm release. It is idempotent: returns nil
 	// if no release exists. Does not wait for pods to terminate - the driver
