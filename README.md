@@ -1,3 +1,6 @@
+> [!WARNING]
+> **Experimental and not maintained.** This repository is experimental and offered on a best-effort basis. It is not maintained. Do not use it for production workloads.
+
 [![Build](https://github.com/kyma-project/gpu/actions/workflows/image-build-main.yaml/badge.svg)](https://github.com/kyma-project/gpu/actions/workflows/image-build-main.yaml)
 
 # GPU
